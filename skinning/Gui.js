@@ -1,5 +1,5 @@
 import { Camera } from "../lib/webglutils/Camera.js";
-import { Vec3 } from "../lib/TSM.js";
+import { Vec3, Vec4 } from "../lib/TSM.js";
 export var Mode;
 (function (Mode) {
     Mode[Mode["playback"] = 0] = "playback";
@@ -33,7 +33,9 @@ export class GUI {
         // Used in the status bar in the GUI
         return 0;
     }
-    getTime() { return this.time; }
+    getTime() {
+        return this.time;
+    }
     getMaxTime() {
         // TODO
         // The animation should stop after the last keyframe
@@ -140,6 +142,51 @@ export class GUI {
         // You will want logic here:
         // 1) To highlight a bone, if the mouse is hovering over a bone;
         // 2) To rotate a bone, if the mouse button is pressed and currently highlighting a bone.
+        const mouseRay = this.getMouseRay(x, y);
+        const scene = this.animation.getScene();
+        scene.meshes.forEach((mesh) => {
+            mesh.bones.forEach((bone) => {
+                if (this.boneIntersect(bone, mouseRay))
+                    console.log("bone");
+            });
+        });
+    }
+    getMouseRay(x, y) {
+        const mouseDir = new Vec4([x, y, 0, 1]);
+        const unproject = this.camera.projMatrix().multiply(this.camera.viewMatrix()).inverse();
+        mouseDir.multiplyMat4(unproject);
+        const pos = this.camera.pos();
+        const dir = new Vec3(mouseDir.xyz).subtract(pos);
+        return { pos, dir };
+    }
+    boneIntersect(bone, ray) {
+        const boneRadius = 1;
+        // const boneRay = ray.dir.multiplyByQuat(bone.rotation, new Vec3());
+        // const ray2D = new Vec2(ray.dir.xy);
+        const C = bone.position;
+        const O = ray.pos;
+        const D = ray.dir;
+        const L = C.subtract(O, new Vec3());
+        const tca = Vec3.dot(L, D);
+        if (tca < 0)
+            return false;
+        const d = L.squaredLength() - tca * tca;
+        if (d < 0 || d > boneRadius * boneRadius)
+            return false;
+        const thc = Math.sqrt(boneRadius * boneRadius - d);
+        const t0 = tca - thc;
+        const t1 = tca + thc;
+        const p0 = ray.pos.add(ray.dir.scale(t0), new Vec3());
+        const p1 = ray.pos.add(ray.dir.scale(t1), new Vec3());
+        let z0 = bone.position.z;
+        let z1 = bone.endpoint.z;
+        if (z0 > z1) {
+            z0 = bone.endpoint.z;
+            z1 = bone.position.z;
+        }
+        if (p0.z < z0 && p0.z > z1 && p1.z < z0 && p0.z > z1)
+            return false;
+        return true;
     }
     getModeString() {
         switch (this.mode) {
@@ -230,6 +277,10 @@ export class GUI {
             }
             case "ArrowDown": {
                 this.camera.offset(this.camera.up().negate(), GUI.zoomSpeed, true);
+                break;
+            }
+            case "KeyC": {
+                this.fps = !this.fps;
                 break;
             }
             case "KeyK": {

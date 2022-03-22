@@ -2,7 +2,7 @@ import { Debugger } from "../lib/webglutils/Debugging.js";
 import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { Floor } from "../lib/webglutils/Floor.js";
 import { GUI } from "./Gui.js";
-import { sceneFSText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText, } from "./Shaders.js";
+import { sceneFSText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText } from "./Shaders.js";
 import { Mat4, Vec4 } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
