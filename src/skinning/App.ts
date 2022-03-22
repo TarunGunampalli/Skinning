@@ -2,16 +2,7 @@ import { Debugger } from "../lib/webglutils/Debugging.js";
 import { CanvasAnimation, WebGLUtilities } from "../lib/webglutils/CanvasAnimation.js";
 import { Floor } from "../lib/webglutils/Floor.js";
 import { GUI, Mode } from "./Gui.js";
-import {
-	sceneFSText,
-	sceneVSText,
-	floorFSText,
-	floorVSText,
-	skeletonFSText,
-	skeletonVSText,
-	sBackVSText,
-	sBackFSText,
-} from "./Shaders.js";
+import { sceneFSText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText } from "./Shaders.js";
 import { Mat4, Vec4, Vec3 } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
@@ -97,16 +88,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		// Status bar background
 		let verts = new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1]);
 		this.sBackRenderPass.setIndexBufferData(new Uint32Array([1, 0, 2, 2, 0, 3]));
-		this.sBackRenderPass.addAttribute(
-			"vertPosition",
-			2,
-			this.ctx.FLOAT,
-			false,
-			2 * Float32Array.BYTES_PER_ELEMENT,
-			0,
-			undefined,
-			verts
-		);
+		this.sBackRenderPass.addAttribute("vertPosition", 2, this.ctx.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, verts);
 
 		this.sBackRenderPass.setDrawData(this.ctx.TRIANGLES, 6, this.ctx.UNSIGNED_INT, 0);
 		this.sBackRenderPass.setup();
@@ -259,12 +241,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			gl.uniform4fv(loc, this.scene.meshes[0].getBoneRotations());
 		});
 
-		this.sceneRenderPass.setDrawData(
-			this.ctx.TRIANGLES,
-			this.scene.meshes[0].geometry.position.count,
-			this.ctx.UNSIGNED_INT,
-			0
-		);
+		this.sceneRenderPass.setDrawData(this.ctx.TRIANGLES, this.scene.meshes[0].geometry.position.count, this.ctx.UNSIGNED_INT, 0);
 		this.sceneRenderPass.setup();
 	}
 
@@ -311,12 +288,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			gl.uniform4fv(loc, this.getScene().meshes[0].getBoneRotations());
 		});
 
-		this.skeletonRenderPass.setDrawData(
-			this.ctx.LINES,
-			this.scene.meshes[0].getBoneIndices().length,
-			this.ctx.UNSIGNED_INT,
-			0
-		);
+		this.skeletonRenderPass.setDrawData(this.ctx.LINES, this.scene.meshes[0].getBoneIndices().length, this.ctx.UNSIGNED_INT, 0);
 		this.skeletonRenderPass.setup();
 	}
 
@@ -325,16 +297,7 @@ export class SkinningAnimation extends CanvasAnimation {
 	 */
 	public initFloor(): void {
 		this.floorRenderPass.setIndexBufferData(this.floor.indicesFlat());
-		this.floorRenderPass.addAttribute(
-			"aVertPos",
-			4,
-			this.ctx.FLOAT,
-			false,
-			4 * Float32Array.BYTES_PER_ELEMENT,
-			0,
-			undefined,
-			this.floor.positionsFlat()
-		);
+		this.floorRenderPass.addAttribute("aVertPos", 4, this.ctx.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, this.floor.positionsFlat());
 
 		this.floorRenderPass.addUniform("uLightPos", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniform4fv(loc, this.lightPosition.xyzw);

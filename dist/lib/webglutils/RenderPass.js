@@ -86,7 +86,7 @@ export class RenderPass {
         let gl = this.ctx;
         gl.useProgram(this.shaderProgram);
         this.extVAO.bindVertexArrayOES(this.VAO);
-        this.uniforms.forEach(uniform => {
+        this.uniforms.forEach((uniform) => {
             uniform.bindFunction(gl, uniform.location);
         });
         if (this.textureMapped) {
@@ -145,9 +145,16 @@ export class RenderPass {
         this.textureLoaded = true;
         this.texture = tex;
     }
-    setVertexShader(vShader) { this.vShader = vShader; }
-    setFragmentShader(fShader) { this.fShader = fShader; }
-    setShaders(vShader, fShader) { this.vShader = vShader; this.fShader = fShader; }
+    setVertexShader(vShader) {
+        this.vShader = vShader;
+    }
+    setFragmentShader(fShader) {
+        this.fShader = fShader;
+    }
+    setShaders(vShader, fShader) {
+        this.vShader = vShader;
+        this.fShader = fShader;
+    }
 }
 class Uniform {
     constructor(location, bindFunction) {
