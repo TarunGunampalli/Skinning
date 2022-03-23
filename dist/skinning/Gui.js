@@ -1,5 +1,5 @@
 import { Camera } from "../lib/webglutils/Camera.js";
-import { Vec3, Vec4 } from "../lib/TSM.js";
+import { Vec3, Vec4, Vec2 } from "../lib/TSM.js";
 export var Mode;
 (function (Mode) {
     Mode[Mode["playback"] = 0] = "playback";
@@ -144,10 +144,12 @@ export class GUI {
         // 2) To rotate a bone, if the mouse button is pressed and currently highlighting a bone.
         const mouseRay = this.getMouseRay(x, y);
         const scene = this.animation.getScene();
+        // console.log(scene.meshes);
         scene.meshes.forEach((mesh) => {
             mesh.bones.forEach((bone) => {
                 if (this.boneIntersect(bone, mouseRay))
-                    console.log("bone");
+                    console.log(bone);
+                // else console.log("no");
             });
         });
     }
@@ -160,33 +162,43 @@ export class GUI {
         return { pos, dir };
     }
     boneIntersect(bone, ray) {
-        const boneRadius = 1;
-        // const boneRay = ray.dir.multiplyByQuat(bone.rotation, new Vec3());
-        // const ray2D = new Vec2(ray.dir.xy);
-        const C = bone.position;
-        const O = ray.pos;
-        const D = ray.dir;
-        const L = C.subtract(O, new Vec3());
-        const tca = Vec3.dot(L, D);
-        if (tca < 0)
+        const p = ray.pos.multiplyByQuat(bone.rotation.inverse(), new Vec3());
+        p.subtract(bone.position);
+        const d = ray.dir.multiplyByQuat(bone.rotation.inverse(), new Vec3());
+        // d.subtract(bone.position);
+        // const C = new Vec2([bone.position.x, bone.position.z]);
+        const C = new Vec2([0, 0]);
+        const O = new Vec2([p.x, p.z]);
+        const D = new Vec2([d.x, d.z]);
+        const circleIntersect = this.circleIntersect(C, O, D);
+        if (!circleIntersect.intersect)
             return false;
+        const { t0, t1 } = circleIntersect;
+        const p0 = ray.pos.add(ray.dir.scale(t0), new Vec3());
+        const p1 = ray.pos.add(ray.dir.scale(t1), new Vec3());
+        let z0 = bone.position.y;
+        let z1 = bone.endpoint.y;
+        if (z0 > z1) {
+            z0 = bone.endpoint.y;
+            z1 = bone.position.y;
+        }
+        if (p0.y < z0 && p0.y > z1 && p1.y < z0 && p0.y > z1)
+            return false;
+        return true;
+    }
+    circleIntersect(C, O, D) {
+        const boneRadius = 1;
+        const L = C.subtract(O, new Vec2());
+        const tca = Vec2.dot(L, D);
+        if (tca < 0)
+            return { intersect: false };
         const d = L.squaredLength() - tca * tca;
         if (d < 0 || d > boneRadius * boneRadius)
-            return false;
+            return { intersect: false };
         const thc = Math.sqrt(boneRadius * boneRadius - d);
         const t0 = tca - thc;
         const t1 = tca + thc;
-        const p0 = ray.pos.add(ray.dir.scale(t0), new Vec3());
-        const p1 = ray.pos.add(ray.dir.scale(t1), new Vec3());
-        let z0 = bone.position.z;
-        let z1 = bone.endpoint.z;
-        if (z0 > z1) {
-            z0 = bone.endpoint.z;
-            z1 = bone.position.z;
-        }
-        if (p0.z < z0 && p0.z > z1 && p1.z < z0 && p0.z > z1)
-            return false;
-        return true;
+        return { intersect: true, t0, t1 };
     }
     getModeString() {
         switch (this.mode) {
