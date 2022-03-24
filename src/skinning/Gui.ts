@@ -213,7 +213,6 @@ export class GUI implements IGUI {
 		// 2) To rotate a bone, if the mouse button is pressed and currently highlighting a bone.
 		const mouseRay = this.getMouseRay(x, y);
 		const scene = this.animation.getScene();
-		// console.log(scene.meshes);
 		scene.meshes.forEach((mesh) => {
 			mesh.bones.forEach((bone) => {
 				if (this.boneIntersect(bone, mouseRay)) console.log(bone);
@@ -222,12 +221,30 @@ export class GUI implements IGUI {
 	}
 
 	private getMouseRay(x: number, y: number): Ray {
-		const mouseDir = new Vec4([x, y, 0, 1]);
-		const unproject = this.camera.projMatrix().multiply(this.camera.viewMatrix()).inverse();
-		mouseDir.multiplyMat4(unproject);
+		const ndcX = (2 * x) / this.width - 1;
+		const ndcY = 1 - (2 * y) / this.viewPortHeight;
+		let mouseDir = new Vec4([ndcX, ndcY, -1, 1]);
+		mouseDir.multiplyMat4(this.projMatrix().inverse());
+		mouseDir = new Vec4([...mouseDir.xy, -1, 0]);
+		mouseDir.multiplyMat4(this.viewMatrix().inverse());
 		const pos = this.camera.pos();
-		const dir = new Vec3(mouseDir.xyz).subtract(pos);
+		// const dir = new Vec3(mouseDir.xyz).subtract(pos);
+		const dir = new Vec3(mouseDir.xyz);
+		dir.normalize();
+		// console.log(dir.xyz);
+		// const s = (-2 - pos.y) / dir.y;
+		// console.log(pos.add(dir.scale(s)).xyz);
 		return { pos, dir };
+
+		// const mouseDir = new Vec4([x, y, 0, 1]);
+		// mouseDir.multiplyMat4(this.projMatrix().inverse());
+		// const pos = this.camera.pos();
+		// const dir = new Vec3(mouseDir.xyz).subtract(pos);
+		// // console.log(dir);
+		// dir.normalize();
+		// const s = (-2 - pos.y) / dir.y;
+		// console.log(pos.add(dir.scale(s)));
+		// return { pos, dir };
 	}
 
 	private boneIntersect(bone: Bone, ray: Ray): boolean {
@@ -255,10 +272,11 @@ export class GUI implements IGUI {
 	}
 
 	private circleIntersect(C: Vec2, O: Vec2, D: Vec2): CircleIntersect {
-		const boneRadius = 1;
+		const boneRadius = 0.1;
 		const L = C.subtract(O, new Vec2());
 		const tca = Vec2.dot(L, D);
 		if (tca < 0) return { intersect: false };
+		// console.log("no tca");
 		const d = L.squaredLength() - tca * tca;
 		if (d < 0 || d > boneRadius * boneRadius) return { intersect: false };
 		const thc = Math.sqrt(boneRadius * boneRadius - d);
