@@ -148,8 +148,6 @@ export class GUI {
             mesh.bones.forEach((bone) => {
                 if (this.boneIntersect(bone, mouseRay).intersect)
                     console.log(bone.endpoint.xyz);
-                // console.log(bone.position.xyz);
-                // this.boneIntersect(bone, mouseRay);
             });
         });
     }
