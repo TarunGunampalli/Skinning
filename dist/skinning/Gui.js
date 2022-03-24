@@ -1,5 +1,5 @@
 import { Camera } from "../lib/webglutils/Camera.js";
-import { Vec3, Vec4, Vec2 } from "../lib/TSM.js";
+import { Vec3, Vec4, Vec2, Mat3 } from "../lib/TSM.js";
 export var Mode;
 (function (Mode) {
     Mode[Mode["playback"] = 0] = "playback";
@@ -146,8 +146,10 @@ export class GUI {
         const scene = this.animation.getScene();
         scene.meshes.forEach((mesh) => {
             mesh.bones.forEach((bone) => {
-                if (this.boneIntersect(bone, mouseRay))
+                if (this.boneIntersect(bone, mouseRay).intersect)
                     console.log(bone);
+                // console.log(bone.position.xyz);
+                // this.boneIntersect(bone, mouseRay);
             });
         });
     }
@@ -158,63 +160,77 @@ export class GUI {
         mouseDir.multiplyMat4(this.projMatrix().inverse());
         mouseDir = new Vec4([...mouseDir.xy, -1, 0]);
         mouseDir.multiplyMat4(this.viewMatrix().inverse());
-        const pos = this.camera.pos();
-        // const dir = new Vec3(mouseDir.xyz).subtract(pos);
         const dir = new Vec3(mouseDir.xyz);
         dir.normalize();
-        // console.log(dir.xyz);
-        // const s = (-2 - pos.y) / dir.y;
-        // console.log(pos.add(dir.scale(s)).xyz);
-        return { pos, dir };
-        // const mouseDir = new Vec4([x, y, 0, 1]);
-        // mouseDir.multiplyMat4(this.projMatrix().inverse());
-        // const pos = this.camera.pos();
-        // const dir = new Vec3(mouseDir.xyz).subtract(pos);
-        // // console.log(dir);
-        // dir.normalize();
-        // const s = (-2 - pos.y) / dir.y;
-        // console.log(pos.add(dir.scale(s)));
-        // return { pos, dir };
+        return { pos: this.camera.pos(), dir };
     }
     boneIntersect(bone, ray) {
-        const p = ray.pos.multiplyByQuat(bone.rotation.inverse(), new Vec3());
-        p.subtract(bone.position);
-        const d = ray.dir.multiplyByQuat(bone.rotation.inverse(), new Vec3());
-        // d.subtract(bone.position);
-        // const C = new Vec2([bone.position.x, bone.position.z]);
+        const R = this.getBoneRotation(bone).inverse();
+        // console.log(R.all());
+        const p = ray.pos.subtract(bone.position, new Vec3());
+        // console.log(p.xyz);
+        p.multiplyMat3(R);
+        // console.log(p.xyz);
+        const d = ray.dir.multiplyMat3(R, new Vec3());
         const C = new Vec2([0, 0]);
         const O = new Vec2([p.x, p.z]);
         const D = new Vec2([d.x, d.z]);
-        const circleIntersect = this.circleIntersect(C, O, D);
+        const circleIntersect = this.circleIntersect(C, O, D.normalize());
         if (!circleIntersect.intersect)
-            return false;
+            return { intersect: false };
         const { t0, t1 } = circleIntersect;
-        const p0 = ray.pos.add(ray.dir.scale(t0), new Vec3());
-        const p1 = ray.pos.add(ray.dir.scale(t1), new Vec3());
-        let z0 = bone.position.y;
-        let z1 = bone.endpoint.y;
-        if (z0 > z1) {
-            z0 = bone.endpoint.y;
-            z1 = bone.position.y;
-        }
-        if (p0.y < z0 && p0.y > z1 && p1.y < z0 && p0.y > z1)
-            return false;
-        return true;
+        const p0 = Vec3.sum(d.scale(t0, new Vec3()), p);
+        const p1 = Vec3.sum(d.scale(t1, new Vec3()), p);
+        const b = Vec3.difference(bone.endpoint, bone.position).length();
+        // console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(R).xyz);
+        // console.log(R.all());
+        if (p0.y < 0 && p0.y > b && p1.y < 0 && p1.y > b)
+            return { intersect: false };
+        else if (p1.y < 0 && p1.y > b)
+            return { intersect: true, t0 };
+        else if (p0.y < 0 && p0.y > b)
+            return { intersect: true, t0: t1 };
+        else
+            return { intersect: true, t0: Math.min(t0, t1) };
     }
     circleIntersect(C, O, D) {
-        const boneRadius = 0.1;
-        const L = C.subtract(O, new Vec2());
-        const tca = Vec2.dot(L, D);
-        if (tca < 0)
+        const boneRadius = 0.2;
+        const L = Vec2.difference(O, C);
+        const b = Vec2.dot(L, D);
+        // console.log(O.xy);
+        // console.log(D.xy);
+        // console.log(b);
+        if (b > 0)
             return { intersect: false };
-        // console.log("no tca");
-        const d = L.squaredLength() - tca * tca;
-        if (d < 0 || d > boneRadius * boneRadius)
+        const c = L.squaredLength() - boneRadius * boneRadius;
+        if (c > b * b)
             return { intersect: false };
-        const thc = Math.sqrt(boneRadius * boneRadius - d);
-        const t0 = tca - thc;
-        const t1 = tca + thc;
-        return { intersect: true, t0, t1 };
+        // console.log(b, c);
+        const t = Math.sqrt(b * b - c);
+        return { intersect: true, t0: -b - t, t1: -b + t };
+        // const boneRadius = 0.1;
+        // const L = C.subtract(O, new Vec2());
+        // const tca = Vec2.dot(L, D);
+        // if (tca < 0) return { intersect: false };
+        // const d = L.squaredLength() - tca * tca;
+        // if (d < 0 || d > boneRadius * boneRadius) return { intersect: false };
+        // const thc = Math.sqrt(boneRadius * boneRadius - d);
+        // return { intersect: true, t0: tca - thc, t1: tca + thc };
+    }
+    getBoneRotation(bone) {
+        const o = new Vec3([0, 1, 0]);
+        const b = Vec3.difference(bone.endpoint, bone.position).normalize();
+        const cos = Vec3.dot(b, o);
+        if (cos == 1)
+            return Mat3.identity;
+        const sin = Vec3.cross(b, o).length();
+        const G = new Mat3([cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
+        const u = b.copy();
+        const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
+        const w = Vec3.cross(o, b);
+        const Finv = new Mat3([u.x, v.x, w.x, u.y, v.y, w.y, u.z, v.z, w.z]);
+        G.multiply(Finv.inverse(), new Mat3());
+        return Finv.multiply(G);
     }
     getModeString() {
         switch (this.mode) {
