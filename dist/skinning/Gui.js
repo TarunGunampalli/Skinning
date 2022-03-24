@@ -147,7 +147,7 @@ export class GUI {
         scene.meshes.forEach((mesh) => {
             mesh.bones.forEach((bone) => {
                 if (this.boneIntersect(bone, mouseRay).intersect)
-                    console.log(bone);
+                    console.log(bone.endpoint.xyz);
                 // console.log(bone.position.xyz);
                 // this.boneIntersect(bone, mouseRay);
             });
@@ -166,11 +166,8 @@ export class GUI {
     }
     boneIntersect(bone, ray) {
         const R = this.getBoneRotation(bone).inverse();
-        // console.log(R.all());
         const p = ray.pos.subtract(bone.position, new Vec3());
-        // console.log(p.xyz);
         p.multiplyMat3(R);
-        // console.log(p.xyz);
         const d = ray.dir.multiplyMat3(R, new Vec3());
         const C = new Vec2([0, 0]);
         const O = new Vec2([p.x, p.z]);
@@ -182,13 +179,13 @@ export class GUI {
         const p0 = Vec3.sum(d.scale(t0, new Vec3()), p);
         const p1 = Vec3.sum(d.scale(t1, new Vec3()), p);
         const b = Vec3.difference(bone.endpoint, bone.position).length();
-        // console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(R).xyz);
-        // console.log(R.all());
-        if (p0.y < 0 && p0.y > b && p1.y < 0 && p1.y > b)
+        const intersectT0 = p0.y > 0 && p0.y < b;
+        const intersectT1 = p1.y > 0 && p1.y < b;
+        if (!intersectT0 && !intersectT1)
             return { intersect: false };
-        else if (p1.y < 0 && p1.y > b)
+        else if (intersectT0)
             return { intersect: true, t0 };
-        else if (p0.y < 0 && p0.y > b)
+        else if (intersectT1)
             return { intersect: true, t0: t1 };
         else
             return { intersect: true, t0: Math.min(t0, t1) };
@@ -197,25 +194,13 @@ export class GUI {
         const boneRadius = 0.2;
         const L = Vec2.difference(O, C);
         const b = Vec2.dot(L, D);
-        // console.log(O.xy);
-        // console.log(D.xy);
-        // console.log(b);
         if (b > 0)
             return { intersect: false };
         const c = L.squaredLength() - boneRadius * boneRadius;
         if (c > b * b)
             return { intersect: false };
-        // console.log(b, c);
         const t = Math.sqrt(b * b - c);
         return { intersect: true, t0: -b - t, t1: -b + t };
-        // const boneRadius = 0.1;
-        // const L = C.subtract(O, new Vec2());
-        // const tca = Vec2.dot(L, D);
-        // if (tca < 0) return { intersect: false };
-        // const d = L.squaredLength() - tca * tca;
-        // if (d < 0 || d > boneRadius * boneRadius) return { intersect: false };
-        // const thc = Math.sqrt(boneRadius * boneRadius - d);
-        // return { intersect: true, t0: tca - thc, t1: tca + thc };
     }
     getBoneRotation(bone) {
         const o = new Vec3([0, 1, 0]);
