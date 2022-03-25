@@ -213,9 +213,16 @@ export class GUI implements IGUI {
 		// 2) To rotate a bone, if the mouse button is pressed and currently highlighting a bone.
 		const mouseRay = this.getMouseRay(x, y);
 		const scene = this.animation.getScene();
+		let intersectedBone = <{ bone: Bone; t: number }>{ bone: undefined, t: 0 };
 		scene.meshes.forEach((mesh) => {
 			mesh.bones.forEach((bone) => {
-				if (this.boneIntersect(bone, mouseRay).intersect) console.log(bone.endpoint.xyz);
+				const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
+				if (intersect) {
+					if (t < intersectedBone.t) {
+						intersectedBone = { bone, t };
+					}
+					console.log(bone.endpoint.xyz);
+				}
 			});
 		});
 	}
