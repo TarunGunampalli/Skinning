@@ -2,7 +2,7 @@ import { Camera } from "../lib/webglutils/Camera.js";
 import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { SkinningAnimation } from "./App.js";
 import { Mat4, Vec3, Vec4, Vec2, Mat2, Quat, Mat3 } from "../lib/TSM.js";
-import { Bone, Mesh } from "./Scene.js";
+import { Bone } from "./Scene.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 
 /**
@@ -31,7 +31,8 @@ interface Intersection {
 interface BoneIntersection {
 	bone: Bone;
 	t: number;
-	mesh: Mesh;
+	bones: Bone[];
+	clicked: boolean;
 }
 
 export enum Mode {
@@ -114,6 +115,8 @@ export class GUI implements IGUI {
 		this.dragging = false;
 		this.time = 0;
 		this.mode = Mode.edit;
+		this.intersectedBone = { bone: undefined, t: -1, bones: [], clicked: false };
+
 		this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.width / this.viewPortHeight, 0.1, 1000.0);
 	}
 
@@ -151,8 +154,7 @@ export class GUI implements IGUI {
 
 		// TODO
 		// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
-		const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
-		this.intersectedBone = this.findBone(mouseRay);
+		this.intersectedBone.clicked = !!this.intersectedBone.bone;
 
 		this.dragging = true;
 		this.prevX = mouse.screenX;
@@ -196,15 +198,15 @@ export class GUI implements IGUI {
 
 			switch (mouse.buttons) {
 				case 1: {
-					const { bone, mesh } = this.intersectedBone;
-					if (bone) {
+					const { bone, bones, clicked } = this.intersectedBone;
+					if (clicked) {
 						// rotate bone
 						let rotAxis = Vec3.cross(this.camera.forward(), mouseDir.negate()).normalize();
 						// const rotQuat = new Mat3().setIdentity().rotate(GUI.rotationSpeed, rotAxis).toQuat().normalize();
 						// const boneQuat = new Quat([0, 0, 0, 1]).inverse();
 						const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rotationSpeed).normalize();
 						// rotQuat.multiply(boneQuat);
-						this.rotateBone(bone, mesh.bones, rotQuat);
+						this.rotateBone(bone, bones, rotQuat);
 					} else {
 						this.rotateCamera(mouseDir);
 					}
@@ -225,6 +227,10 @@ export class GUI implements IGUI {
 		// You will want logic here:
 		// 1) To highlight a bone, if the mouse is hovering over a bone;
 		// 2) To rotate a bone, if the mouse button is pressed and currently highlighting a bone.
+		if (!this.intersectedBone.clicked) {
+			const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
+			this.intersectedBone = this.findBone(mouseRay);
+		}
 	}
 
 	private rotateCamera(mouseDir: Vec3): void {
@@ -244,12 +250,16 @@ export class GUI implements IGUI {
 		}
 
 		bone.rotation.multiply(rotQuat);
-		const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
-		bone.endpoint = Vec3.sum(bone.position, b);
+		this.updateEndpoint(bone);
 
 		bone.children.forEach((child) => {
 			this.rotateBone(bones[child], bones, rotQuat);
 		});
+	}
+
+	private updateEndpoint(bone: Bone): void {
+		const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
+		bone.endpoint = Vec3.sum(bone.position, b);
 	}
 
 	private getMouseRay(x: number, y: number): Ray {
@@ -265,13 +275,13 @@ export class GUI implements IGUI {
 
 	private findBone(mouseRay: Ray): BoneIntersection {
 		const scene = this.animation.getScene();
-		let intersectedBone: BoneIntersection = { bone: undefined, t: -1, mesh: undefined };
+		let intersectedBone: BoneIntersection = { bone: undefined, t: -1, bones: [], clicked: this.intersectedBone.clicked };
 		scene.meshes.forEach((mesh) => {
 			mesh.bones.forEach((bone) => {
 				const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
 				if (intersect) {
 					if (intersectedBone.t == -1 || t < intersectedBone.t) {
-						intersectedBone = { bone, t, mesh };
+						intersectedBone = { bone, t, bones: mesh.bones, clicked: intersectedBone.clicked };
 					}
 				}
 			});
@@ -280,11 +290,11 @@ export class GUI implements IGUI {
 	}
 
 	private boneIntersect(bone: Bone, ray: Ray): Intersection {
-		const R = this.getBoneRotation(bone).inverse();
-		console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(R).xyz);
-		const p = ray.pos.subtract(bone.position, new Vec3());
-		p.multiplyMat3(R);
-		const d = ray.dir.multiplyMat3(R, new Vec3());
+		const rotMat = this.getBoneRotation(bone);
+		// console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(rotMat.inverse(new Mat3())).xyz);
+		const p = ray.pos.subtract(bone.position, new Vec3()).multiplyMat3(rotMat);
+		const d = ray.dir.multiplyMat3(rotMat).normalize();
+
 		const C = new Vec2([0, 0]);
 		const O = new Vec2([p.x, p.z]);
 		const D = new Vec2([d.x, d.z]);
@@ -315,20 +325,45 @@ export class GUI implements IGUI {
 		return { intersect: true, t0: -b - t, t1: -b + t };
 	}
 
-	private getBoneRotation(bone: Bone) {
+	private getBoneRotation(bone: Bone): Mat3 {
 		const o = new Vec3([0, 1, 0]);
 		const b = Vec3.difference(bone.endpoint, bone.position).normalize();
 		const cos = Vec3.dot(b, o);
 		if (cos == 1) return Mat3.identity;
 		else if (cos == -1) return new Mat3([1, 0, 0, 0, -1, 0, 0, 0, 1]);
 		const sin = Vec3.cross(b, o).length();
+		// console.log(cos, sin);
 		const G = new Mat3([cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
 		const u = b.copy();
 		const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
 		const w = Vec3.cross(o, b);
-		const Finv = new Mat3([u.x, v.x, w.x, u.y, v.y, w.y, u.z, v.z, w.z]);
-		G.multiply(Finv.inverse(new Mat3()));
-		return Finv.multiply(G);
+		// console.log(u.xyz, v.xyz, w.xyz);
+		// console.log(G);
+		const Finv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]).transpose();
+		return Finv.inverse(new Mat3()).multiply(G.multiply(Finv));
+	}
+
+	private getBoneRotationQuat(bone: Bone): Quat {
+		const o = new Vec3([0, 1, 0]);
+		const b = Vec3.difference(bone.endpoint, bone.position).normalize();
+		const rotAxis = Vec3.cross(b, o);
+		const sin = rotAxis.length();
+		const rotQuat = new Quat([rotAxis.x * sin, rotAxis.y * sin, rotAxis.z * sin, Vec3.dot(b, o)]);
+		return rotQuat.normalize();
+	}
+
+	private getBoneRotationRotate(bone: Bone): Mat3 {
+		const o = new Vec3([0, 1, 0]);
+		const b = Vec3.difference(bone.endpoint, bone.position).normalize();
+		const rotAxis = Vec3.cross(o, b);
+		const sin = rotAxis.length();
+		const cos = Vec3.dot(o, b);
+		if (cos == 1) return Mat3.identity;
+		else if (cos == -1) return new Mat3([1, 0, 0, 0, -1, 0, 0, 0, 1]);
+		// console.log(rotAxis.xyz);
+		return Mat3.identity.rotate(Math.asin(sin), rotAxis);
+		// const rotQuat = new Quat([rotAxis.x * sin, rotAxis.y * sin, rotAxis.z * sin, Vec3.dot(b, o)]);
+		// return rotQuat.normalize();
 	}
 
 	public getModeString(): string {
@@ -353,6 +388,7 @@ export class GUI implements IGUI {
 
 		// TODO
 		// Maybe your bone highlight/dragging logic needs to do stuff here too
+		this.intersectedBone.clicked = false;
 	}
 
 	/**
@@ -414,7 +450,9 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
-					bone.rotation.multiply(rotQuat);
+					// bone.rotation.multiply(rotQuat);
+					// this.updateEndpoint(bone);
+					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
 				} else {
 					this.camera.roll(GUI.rollSpeed, false);
 				}
@@ -425,7 +463,9 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
-					bone.rotation.multiply(rotQuat);
+					// bone.rotation.multiply(rotQuat);
+					// this.updateEndpoint(bone);
+					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
 				} else {
 					this.camera.roll(GUI.rollSpeed, true);
 				}
