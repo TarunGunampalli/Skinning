@@ -1,5 +1,5 @@
 import { Camera } from "../lib/webglutils/Camera.js";
-import { Vec3, Vec4, Vec2, Mat3 } from "../lib/TSM.js";
+import { Vec3, Vec4, Vec2, Quat, Mat3 } from "../lib/TSM.js";
 export var Mode;
 (function (Mode) {
     Mode[Mode["playback"] = 0] = "playback";
@@ -124,10 +124,10 @@ export class GUI {
                     if (bone) {
                         // rotate bone
                         let rotAxis = Vec3.cross(this.camera.forward(), mouseDir.negate()).normalize();
-                        const rotQuat = new Mat3().setIdentity().rotate(GUI.rotationSpeed, rotAxis).toQuat().normalize();
-                        // const rotMat = new Mat4().setIdentity().rotate(GUI.rotationSpeed, rotAxis);
+                        // const rotQuat = new Mat3().setIdentity().rotate(GUI.rotationSpeed, rotAxis).toQuat().normalize();
+                        const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rotationSpeed).normalize();
                         this.rotateBone(bone, mesh.bones, rotQuat);
-                        console.log(bone.endpoint.xyz);
+                        // console.log(bone.endpoint.xyz);
                     }
                     else {
                         this.rotateCamera(mouseDir);
@@ -163,9 +163,9 @@ export class GUI {
         if (bone.parent != -1) {
             bone.position = bones[bone.parent].endpoint.copy();
         }
-        const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat);
-        bone.endpoint = Vec3.sum(bone.position, b);
         bone.rotation.multiply(rotQuat);
+        const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
+        bone.endpoint = Vec3.sum(bone.position, b);
         bone.children.forEach((child) => {
             this.rotateBone(bones[child], bones, rotQuat);
         });
