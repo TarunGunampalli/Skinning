@@ -2,7 +2,7 @@ import { Camera } from "../lib/webglutils/Camera.js";
 import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { SkinningAnimation } from "./App.js";
 import { Mat4, Vec3, Vec4, Vec2, Mat2, Quat, Mat3 } from "../lib/TSM.js";
-import { Bone } from "./Scene.js";
+import { Bone, Mesh } from "./Scene.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 
 /**
@@ -26,6 +26,12 @@ interface Intersection {
 	intersect: boolean;
 	t0?: number;
 	t1?: number;
+}
+
+interface BoneIntersection {
+	bone: Bone;
+	t: number;
+	mesh: Mesh;
 }
 
 export enum Mode {
@@ -55,6 +61,8 @@ export class GUI implements IGUI {
 	private width: number;
 
 	private animation: SkinningAnimation;
+
+	private intersectedBone: BoneIntersection;
 
 	public time: number;
 
@@ -143,6 +151,8 @@ export class GUI implements IGUI {
 
 		// TODO
 		// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
+		const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
+		this.intersectedBone = this.findBone(mouseRay);
 
 		this.dragging = true;
 		this.prevX = mouse.screenX;
@@ -186,13 +196,16 @@ export class GUI implements IGUI {
 
 			switch (mouse.buttons) {
 				case 1: {
-					let rotAxis: Vec3 = Vec3.cross(this.camera.forward(), mouseDir);
-					rotAxis = rotAxis.normalize();
-
-					if (this.fps) {
-						this.camera.rotate(rotAxis, GUI.rotationSpeed);
+					const { bone, mesh } = this.intersectedBone;
+					if (bone) {
+						// rotate bone
+						let rotAxis = Vec3.cross(this.camera.forward(), mouseDir.negate()).normalize();
+						const rotQuat = new Mat3().setIdentity().rotate(GUI.rotationSpeed, rotAxis).toQuat().normalize();
+						// const rotMat = new Mat4().setIdentity().rotate(GUI.rotationSpeed, rotAxis);
+						this.rotateBone(bone, mesh.bones, rotQuat);
+						console.log(bone.endpoint.xyz);
 					} else {
-						this.camera.orbitTarget(rotAxis, GUI.rotationSpeed);
+						this.rotateCamera(mouseDir);
 					}
 					break;
 				}
@@ -211,19 +224,30 @@ export class GUI implements IGUI {
 		// You will want logic here:
 		// 1) To highlight a bone, if the mouse is hovering over a bone;
 		// 2) To rotate a bone, if the mouse button is pressed and currently highlighting a bone.
-		const mouseRay = this.getMouseRay(x, y);
-		const scene = this.animation.getScene();
-		let intersectedBone = <{ bone: Bone; t: number }>{ bone: undefined, t: 0 };
-		scene.meshes.forEach((mesh) => {
-			mesh.bones.forEach((bone) => {
-				const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
-				if (intersect) {
-					if (t < intersectedBone.t) {
-						intersectedBone = { bone, t };
-					}
-					console.log(bone.endpoint.xyz);
-				}
-			});
+	}
+
+	private rotateCamera(mouseDir: Vec3): void {
+		let rotAxis: Vec3 = Vec3.cross(this.camera.forward(), mouseDir);
+		rotAxis = rotAxis.normalize();
+
+		if (this.fps) {
+			this.camera.rotate(rotAxis, GUI.rotationSpeed);
+		} else {
+			this.camera.orbitTarget(rotAxis, GUI.rotationSpeed);
+		}
+	}
+
+	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat) {
+		if (bone.parent != -1) {
+			bone.position = bones[bone.parent].endpoint.copy();
+		}
+
+		const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat);
+		bone.endpoint = Vec3.sum(bone.position, b);
+		bone.rotation.multiply(rotQuat);
+
+		bone.children.forEach((child) => {
+			this.rotateBone(bones[child], bones, rotQuat);
 		});
 	}
 
@@ -234,9 +258,24 @@ export class GUI implements IGUI {
 		mouseDir.multiplyMat4(this.projMatrix().inverse());
 		mouseDir = new Vec4([...mouseDir.xy, -1, 0]);
 		mouseDir.multiplyMat4(this.viewMatrix().inverse());
-		const dir = new Vec3(mouseDir.xyz);
-		dir.normalize();
+		const dir = new Vec3(mouseDir.xyz).normalize();
 		return { pos: this.camera.pos(), dir };
+	}
+
+	private findBone(mouseRay: Ray): BoneIntersection {
+		const scene = this.animation.getScene();
+		let intersectedBone: BoneIntersection = { bone: undefined, t: -1, mesh: undefined };
+		scene.meshes.forEach((mesh) => {
+			mesh.bones.forEach((bone) => {
+				const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
+				if (intersect) {
+					if (intersectedBone.t == -1 || t < intersectedBone.t) {
+						intersectedBone = { bone, t, mesh };
+					}
+				}
+			});
+		});
+		return intersectedBone;
 	}
 
 	private boneIntersect(bone: Bone, ray: Ray): Intersection {
@@ -262,7 +301,7 @@ export class GUI implements IGUI {
 	}
 
 	private circleIntersect(C: Vec2, O: Vec2, D: Vec2): Intersection {
-		const boneRadius = 0.2;
+		const boneRadius = 0.5;
 		const L = Vec2.difference(O, C);
 		const b = Vec2.dot(L, D);
 		if (b > 0) return { intersect: false };
