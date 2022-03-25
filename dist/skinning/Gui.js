@@ -125,9 +125,10 @@ export class GUI {
                         // rotate bone
                         let rotAxis = Vec3.cross(this.camera.forward(), mouseDir.negate()).normalize();
                         // const rotQuat = new Mat3().setIdentity().rotate(GUI.rotationSpeed, rotAxis).toQuat().normalize();
+                        // const boneQuat = new Quat([0, 0, 0, 1]).inverse();
                         const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rotationSpeed).normalize();
+                        // rotQuat.multiply(boneQuat);
                         this.rotateBone(bone, mesh.bones, rotQuat);
-                        // console.log(bone.endpoint.xyz);
                     }
                     else {
                         this.rotateCamera(mouseDir);
@@ -197,6 +198,7 @@ export class GUI {
     }
     boneIntersect(bone, ray) {
         const R = this.getBoneRotation(bone).inverse();
+        console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(R).xyz);
         const p = ray.pos.subtract(bone.position, new Vec3());
         p.multiplyMat3(R);
         const d = ray.dir.multiplyMat3(R, new Vec3());
@@ -206,12 +208,14 @@ export class GUI {
         const circleIntersect = this.circleIntersect(C, O, D.normalize());
         if (!circleIntersect.intersect)
             return { intersect: false };
+        // console.log("circle intersected");
         const { t0, t1 } = circleIntersect;
         const p0 = Vec3.sum(d.scale(t0, new Vec3()), p);
         const p1 = Vec3.sum(d.scale(t1, new Vec3()), p);
         const b = Vec3.difference(bone.endpoint, bone.position).length();
         const intersectT0 = p0.y > 0 && p0.y < b;
         const intersectT1 = p1.y > 0 && p1.y < b;
+        // console.log(p0.y, p1.y, b);
         if (!intersectT0 && !intersectT1)
             return { intersect: false };
         else if (intersectT0)
@@ -222,7 +226,7 @@ export class GUI {
             return { intersect: true, t0: Math.min(t0, t1) };
     }
     circleIntersect(C, O, D) {
-        const boneRadius = 0.5;
+        const boneRadius = 0.2;
         const L = Vec2.difference(O, C);
         const b = Vec2.dot(L, D);
         if (b > 0)
@@ -239,13 +243,15 @@ export class GUI {
         const cos = Vec3.dot(b, o);
         if (cos == 1)
             return Mat3.identity;
+        else if (cos == -1)
+            return new Mat3([1, 0, 0, 0, -1, 0, 0, 0, 1]);
         const sin = Vec3.cross(b, o).length();
         const G = new Mat3([cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
         const u = b.copy();
         const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
         const w = Vec3.cross(o, b);
         const Finv = new Mat3([u.x, v.x, w.x, u.y, v.y, w.y, u.z, v.z, w.z]);
-        G.multiply(Finv.inverse(), new Mat3());
+        G.multiply(Finv.inverse(new Mat3()));
         return Finv.multiply(G);
     }
     getModeString() {
@@ -324,11 +330,27 @@ export class GUI {
                 break;
             }
             case "ArrowLeft": {
-                this.camera.roll(GUI.rollSpeed, false);
+                if (this.intersectedBone.bone) {
+                    const bone = this.intersectedBone.bone;
+                    const rotAxis = Vec3.difference(bone.endpoint, bone.position);
+                    const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
+                    bone.rotation.multiply(rotQuat);
+                }
+                else {
+                    this.camera.roll(GUI.rollSpeed, false);
+                }
                 break;
             }
             case "ArrowRight": {
-                this.camera.roll(GUI.rollSpeed, true);
+                if (this.intersectedBone.bone) {
+                    const bone = this.intersectedBone.bone;
+                    const rotAxis = Vec3.difference(bone.endpoint, bone.position);
+                    const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
+                    bone.rotation.multiply(rotQuat);
+                }
+                else {
+                    this.camera.roll(GUI.rollSpeed, true);
+                }
                 break;
             }
             case "ArrowUp": {
