@@ -205,23 +205,23 @@ export class GUI {
     }
     boneIntersect(bone, ray) {
         const rotMat = this.getBoneRotation(bone);
-        // console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(rotMat.inverse(new Mat3())).xyz);
+        console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(rotMat).xyz);
         const p = ray.pos.subtract(bone.position, new Vec3()).multiplyMat3(rotMat);
-        const d = ray.dir.multiplyMat3(rotMat).normalize();
+        const d = ray.dir.multiplyMat3(rotMat, new Vec3()).normalize();
         const C = new Vec2([0, 0]);
         const O = new Vec2([p.x, p.z]);
         const D = new Vec2([d.x, d.z]);
         const circleIntersect = this.circleIntersect(C, O, D.normalize());
         if (!circleIntersect.intersect)
             return { intersect: false };
-        // console.log("circle intersected");
         const { t0, t1 } = circleIntersect;
-        const p0 = Vec3.sum(d.scale(t0, new Vec3()), p);
-        const p1 = Vec3.sum(d.scale(t1, new Vec3()), p);
+        // console.log(Vec3.sum(p, d.scale(t0, new Vec3())).xyz, Vec3.sum(p, d.scale(t1, new Vec3())).xyz);
+        const y0 = Vec3.sum(p, d.scale(t0, new Vec3())).y;
+        const y1 = Vec3.sum(p, d.scale(t1, new Vec3())).y;
         const b = Vec3.difference(bone.endpoint, bone.position).length();
-        const intersectT0 = p0.y > 0 && p0.y < b;
-        const intersectT1 = p1.y > 0 && p1.y < b;
-        // console.log(p0.y, p1.y, b);
+        const intersectT0 = y0 > 0 && y0 < b;
+        const intersectT1 = y1 > 0 && y1 < b;
+        // console.log(bone.endpoint.xyz, y0, y1);
         if (!intersectT0 && !intersectT1)
             return { intersect: false };
         else if (intersectT0)
@@ -252,38 +252,12 @@ export class GUI {
         else if (cos == -1)
             return new Mat3([1, 0, 0, 0, -1, 0, 0, 0, 1]);
         const sin = Vec3.cross(b, o).length();
-        // console.log(cos, sin);
-        const G = new Mat3([cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
+        const G = new Mat3([cos, sin, 0, -sin, cos, 0, 0, 0, 1]);
         const u = b.copy();
         const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
         const w = Vec3.cross(o, b);
-        // console.log(u.xyz, v.xyz, w.xyz);
-        // console.log(G);
-        const Finv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]).transpose();
-        return Finv.inverse(new Mat3()).multiply(G.multiply(Finv));
-    }
-    getBoneRotationQuat(bone) {
-        const o = new Vec3([0, 1, 0]);
-        const b = Vec3.difference(bone.endpoint, bone.position).normalize();
-        const rotAxis = Vec3.cross(b, o);
-        const sin = rotAxis.length();
-        const rotQuat = new Quat([rotAxis.x * sin, rotAxis.y * sin, rotAxis.z * sin, Vec3.dot(b, o)]);
-        return rotQuat.normalize();
-    }
-    getBoneRotationRotate(bone) {
-        const o = new Vec3([0, 1, 0]);
-        const b = Vec3.difference(bone.endpoint, bone.position).normalize();
-        const rotAxis = Vec3.cross(o, b);
-        const sin = rotAxis.length();
-        const cos = Vec3.dot(o, b);
-        if (cos == 1)
-            return Mat3.identity;
-        else if (cos == -1)
-            return new Mat3([1, 0, 0, 0, -1, 0, 0, 0, 1]);
-        // console.log(rotAxis.xyz);
-        return Mat3.identity.rotate(Math.asin(sin), rotAxis);
-        // const rotQuat = new Quat([rotAxis.x * sin, rotAxis.y * sin, rotAxis.z * sin, Vec3.dot(b, o)]);
-        // return rotQuat.normalize();
+        const Finv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]);
+        return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
     }
     getModeString() {
         switch (this.mode) {
