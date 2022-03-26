@@ -2,11 +2,23 @@ import { Debugger } from "../lib/webglutils/Debugging.js";
 import { CanvasAnimation, WebGLUtilities } from "../lib/webglutils/CanvasAnimation.js";
 import { Floor } from "../lib/webglutils/Floor.js";
 import { GUI, Mode } from "./Gui.js";
-import { sceneFSText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText } from "./Shaders.js";
+import {
+	sceneFSText,
+	sceneVSText,
+	floorFSText,
+	floorVSText,
+	skeletonFSText,
+	skeletonVSText,
+	sBackVSText,
+	sBackFSText,
+	cylinderVSText,
+	cylinderFSText,
+} from "./Shaders.js";
 import { Mat4, Vec4, Vec3 } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 import { Camera } from "../lib/webglutils/Camera.js";
+import { Cylinder } from "./Cylinder.js";
 
 export class SkinningAnimation extends CanvasAnimation {
 	private gui: GUI;
@@ -24,6 +36,10 @@ export class SkinningAnimation extends CanvasAnimation {
 
 	/* Skeleton rendering info */
 	private skeletonRenderPass: RenderPass;
+
+	/* Cylinder rendering info */
+	private cylinder: Cylinder;
+	public cylinderRenderPass: RenderPass;
 
 	/* Scrub bar background rendering info */
 	private sBackRenderPass: RenderPass;
@@ -49,10 +65,12 @@ export class SkinningAnimation extends CanvasAnimation {
 		let gl = this.ctx;
 
 		this.floor = new Floor();
+		this.cylinder = new Cylinder();
 
 		this.floorRenderPass = new RenderPass(this.extVAO, gl, floorVSText, floorFSText);
 		this.sceneRenderPass = new RenderPass(this.extVAO, gl, sceneVSText, sceneFSText);
 		this.skeletonRenderPass = new RenderPass(this.extVAO, gl, skeletonVSText, skeletonFSText);
+		this.cylinderRenderPass = new RenderPass(this.extVAO, gl, cylinderVSText, cylinderFSText);
 
 		this.gui = new GUI(this.canvas2d, this);
 		this.lightPosition = new Vec4([-10, 10, -10, 1]);
@@ -100,6 +118,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		}
 		this.initModel();
 		this.initSkeleton();
+		// this.initCylinder();
 		this.gui.reset();
 	}
 
@@ -320,6 +339,40 @@ export class SkinningAnimation extends CanvasAnimation {
 
 		this.floorRenderPass.setDrawData(this.ctx.TRIANGLES, this.floor.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 		this.floorRenderPass.setup();
+	}
+
+	/**
+	 * Sets up the cylinder drawing
+	 */
+	public initCylinder(scale: Mat4, rot: Mat4, trans: Mat4): void {
+		this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
+		this.cylinderRenderPass.addAttribute(
+			"aVertPos",
+			4,
+			this.ctx.FLOAT,
+			false,
+			4 * Float32Array.BYTES_PER_ELEMENT,
+			0,
+			undefined,
+			this.cylinder.positionsFlat()
+		);
+
+		// ? do we need uWorld?
+		this.cylinderRenderPass.addUniform("uWorld", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniformMatrix4fv(loc, false, new Float32Array(Mat4.identity.all()));
+		});
+		this.cylinderRenderPass.addUniform("uScale", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniformMatrix4fv(loc, false, new Float32Array(scale.all()));
+		});
+		this.cylinderRenderPass.addUniform("uRot", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniformMatrix4fv(loc, false, new Float32Array(rot.all()));
+		});
+		this.cylinderRenderPass.addUniform("uTrans", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniformMatrix4fv(loc, false, new Float32Array(trans.all()));
+		});
+
+		this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
+		this.cylinderRenderPass.setup();
 	}
 
 	/** @internal

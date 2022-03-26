@@ -149,4 +149,26 @@ export const sBackFSText = `
     }
 
 `;
+export const cylinderVSText = `
+    precision mediump float;
+
+    attribute vec3 aVertPos;
+    attribute float boneIndex;
+    
+    uniform mat4 uScale;
+    uniform mat4 uRot;
+    uniform mat4 uTrans;
+
+    void main() {
+        gl_Position = uTrans * uRot * uScale * vec4(aVertPos.xyz, 1);
+    }
+`;
+export const cylinderFSText = `
+    precision mediump float;
+
+    void main () {
+        gl_FragColor = vec4(0, 1.0, 0, 1.0);
+    }
+
+`;
 //# sourceMappingURL=Shaders.js.map

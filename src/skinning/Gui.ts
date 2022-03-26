@@ -155,6 +155,9 @@ export class GUI implements IGUI {
 		// TODO
 		// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
 		this.intersectedBone.clicked = !!this.intersectedBone.bone;
+		// if (this.intersectedBone.clicked) {
+		// 	console.log(this.intersectedBone.bone.endpoint.xyz);
+		// }
 
 		this.dragging = true;
 		this.prevX = mouse.screenX;
@@ -201,11 +204,8 @@ export class GUI implements IGUI {
 					const { bone, bones, clicked } = this.intersectedBone;
 					if (clicked) {
 						// rotate bone
-						let rotAxis = Vec3.cross(this.camera.forward(), mouseDir.negate()).normalize();
-						// const rotQuat = new Mat3().setIdentity().rotate(GUI.rotationSpeed, rotAxis).toQuat().normalize();
-						// const boneQuat = new Quat([0, 0, 0, 1]).inverse();
+						let rotAxis = Vec3.cross(this.camera.forward(), mouseDir).normalize();
 						const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rotationSpeed).normalize();
-						// rotQuat.multiply(boneQuat);
 						this.rotateBone(bone, bones, rotQuat);
 					} else {
 						this.rotateCamera(mouseDir);
@@ -230,6 +230,10 @@ export class GUI implements IGUI {
 		if (!this.intersectedBone.clicked) {
 			const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
 			this.intersectedBone = this.findBone(mouseRay);
+		}
+		if (this.intersectedBone.bone) {
+			this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
+			this.animation.cylinderRenderPass.draw();
 		}
 	}
 
@@ -291,8 +295,7 @@ export class GUI implements IGUI {
 
 	private boneIntersect(bone: Bone, ray: Ray): Intersection {
 		const rotMat = this.getBoneRotation(bone);
-		console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(rotMat).xyz);
-		const p = ray.pos.subtract(bone.position, new Vec3()).multiplyMat3(rotMat);
+		const p = Vec3.difference(ray.pos, bone.position).multiplyMat3(rotMat);
 		const d = ray.dir.multiplyMat3(rotMat, new Vec3()).normalize();
 
 		const C = new Vec2([0, 0]);
@@ -315,7 +318,7 @@ export class GUI implements IGUI {
 	}
 
 	private circleIntersect(C: Vec2, O: Vec2, D: Vec2): Intersection {
-		const boneRadius = 0.2;
+		const boneRadius = 0.25;
 		const L = Vec2.difference(O, C);
 		const b = Vec2.dot(L, D);
 		if (b > 0) return { intersect: false };
@@ -338,6 +341,16 @@ export class GUI implements IGUI {
 		const w = Vec3.cross(o, b);
 		const Finv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]);
 		return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
+	}
+
+	private getBoneMatrices(bone: Bone): [Mat4, Mat4, Mat4] {
+		const b = Vec3.difference(bone.endpoint, bone.position);
+		const scale = new Mat4([1, 0, 0, 0, b.length(), 0, 0, 0, 1]);
+		const rot = this.getBoneRotation(bone).inverse().toMat4();
+		const [x, y, z] = bone.position.xyz;
+		const trans = new Mat4([1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1]);
+		// return [scale, rot, trans];
+		return [Mat4.identity, Mat4.identity, Mat4.identity];
 	}
 
 	public getModeString(): string {

@@ -1,5 +1,5 @@
 import { Camera } from "../lib/webglutils/Camera.js";
-import { Vec3, Vec4, Vec2, Quat, Mat3 } from "../lib/TSM.js";
+import { Mat4, Vec3, Vec4, Vec2, Quat, Mat3 } from "../lib/TSM.js";
 export var Mode;
 (function (Mode) {
     Mode[Mode["playback"] = 0] = "playback";
@@ -83,6 +83,9 @@ export class GUI {
         // TODO
         // Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
         this.intersectedBone.clicked = !!this.intersectedBone.bone;
+        // if (this.intersectedBone.clicked) {
+        // 	console.log(this.intersectedBone.bone.endpoint.xyz);
+        // }
         this.dragging = true;
         this.prevX = mouse.screenX;
         this.prevY = mouse.screenY;
@@ -123,11 +126,8 @@ export class GUI {
                     const { bone, bones, clicked } = this.intersectedBone;
                     if (clicked) {
                         // rotate bone
-                        let rotAxis = Vec3.cross(this.camera.forward(), mouseDir.negate()).normalize();
-                        // const rotQuat = new Mat3().setIdentity().rotate(GUI.rotationSpeed, rotAxis).toQuat().normalize();
-                        // const boneQuat = new Quat([0, 0, 0, 1]).inverse();
+                        let rotAxis = Vec3.cross(this.camera.forward(), mouseDir).normalize();
                         const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rotationSpeed).normalize();
-                        // rotQuat.multiply(boneQuat);
                         this.rotateBone(bone, bones, rotQuat);
                     }
                     else {
@@ -152,6 +152,10 @@ export class GUI {
         if (!this.intersectedBone.clicked) {
             const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
             this.intersectedBone = this.findBone(mouseRay);
+        }
+        if (this.intersectedBone.bone) {
+            this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
+            this.animation.cylinderRenderPass.draw();
         }
     }
     rotateCamera(mouseDir) {
@@ -205,8 +209,7 @@ export class GUI {
     }
     boneIntersect(bone, ray) {
         const rotMat = this.getBoneRotation(bone);
-        console.log(Vec3.difference(bone.endpoint, bone.position).multiplyMat3(rotMat).xyz);
-        const p = ray.pos.subtract(bone.position, new Vec3()).multiplyMat3(rotMat);
+        const p = Vec3.difference(ray.pos, bone.position).multiplyMat3(rotMat);
         const d = ray.dir.multiplyMat3(rotMat, new Vec3()).normalize();
         const C = new Vec2([0, 0]);
         const O = new Vec2([p.x, p.z]);
@@ -232,7 +235,7 @@ export class GUI {
             return { intersect: true, t0: Math.min(t0, t1) };
     }
     circleIntersect(C, O, D) {
-        const boneRadius = 0.2;
+        const boneRadius = 0.25;
         const L = Vec2.difference(O, C);
         const b = Vec2.dot(L, D);
         if (b > 0)
@@ -258,6 +261,15 @@ export class GUI {
         const w = Vec3.cross(o, b);
         const Finv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]);
         return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
+    }
+    getBoneMatrices(bone) {
+        const b = Vec3.difference(bone.endpoint, bone.position);
+        const scale = new Mat4([1, 0, 0, 0, b.length(), 0, 0, 0, 1]);
+        const rot = this.getBoneRotation(bone).inverse().toMat4();
+        const [x, y, z] = bone.position.xyz;
+        const trans = new Mat4([1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1]);
+        // return [scale, rot, trans];
+        return [Mat4.identity, Mat4.identity, Mat4.identity];
     }
     getModeString() {
         switch (this.mode) {
