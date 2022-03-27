@@ -153,9 +153,9 @@ export class GUI {
             const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
             this.intersectedBone = this.findBone(mouseRay);
         }
+        this.animation.cylinder.setDraw(!!this.intersectedBone.bone);
         if (this.intersectedBone.bone) {
             this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
-            this.animation.cylinderRenderPass.draw();
         }
     }
     rotateCamera(mouseDir) {
@@ -218,13 +218,11 @@ export class GUI {
         if (!circleIntersect.intersect)
             return { intersect: false };
         const { t0, t1 } = circleIntersect;
-        // console.log(Vec3.sum(p, d.scale(t0, new Vec3())).xyz, Vec3.sum(p, d.scale(t1, new Vec3())).xyz);
         const y0 = Vec3.sum(p, d.scale(t0, new Vec3())).y;
         const y1 = Vec3.sum(p, d.scale(t1, new Vec3())).y;
         const b = Vec3.difference(bone.endpoint, bone.position).length();
         const intersectT0 = y0 > 0 && y0 < b;
         const intersectT1 = y1 > 0 && y1 < b;
-        // console.log(bone.endpoint.xyz, y0, y1);
         if (!intersectT0 && !intersectT1)
             return { intersect: false };
         else if (intersectT0)
@@ -268,8 +266,7 @@ export class GUI {
         const rot = this.getBoneRotation(bone).inverse().toMat4();
         const [x, y, z] = bone.position.xyz;
         const trans = new Mat4([1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1]);
-        // return [scale, rot, trans];
-        return [Mat4.identity, Mat4.identity, Mat4.identity];
+        return [scale, rot, trans];
     }
     getModeString() {
         switch (this.mode) {

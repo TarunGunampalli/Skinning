@@ -9,6 +9,9 @@ export class Cylinder {
         this.indices = [];
         this.setVBAs();
     }
+    setDraw(d) {
+        this.draw = d;
+    }
     /* Returns a flat Float32Array of the cylinder's vertex positions */
     positionsFlat() {
         return new Float32Array(this.positions);

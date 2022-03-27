@@ -170,8 +170,14 @@ export class SkinningAnimation extends CanvasAnimation {
         this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
         this.cylinderRenderPass.addAttribute("aVertPos", 4, this.ctx.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, this.cylinder.positionsFlat());
         // ? do we need uWorld?
-        this.cylinderRenderPass.addUniform("uWorld", (gl, loc) => {
-            gl.uniformMatrix4fv(loc, false, new Float32Array(Mat4.identity.all()));
+        // this.cylinderRenderPass.addUniform("uWorld", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+        // 	gl.uniformMatrix4fv(loc, false, new Float32Array(Mat4.identity.all()));
+        // });
+        this.cylinderRenderPass.addUniform("uProj", (gl, loc) => {
+            gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.projMatrix().all()));
+        });
+        this.cylinderRenderPass.addUniform("uView", (gl, loc) => {
+            gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.viewMatrix().all()));
         });
         this.cylinderRenderPass.addUniform("uScale", (gl, loc) => {
             gl.uniformMatrix4fv(loc, false, new Float32Array(scale.all()));
@@ -182,6 +188,7 @@ export class SkinningAnimation extends CanvasAnimation {
         this.cylinderRenderPass.addUniform("uTrans", (gl, loc) => {
             gl.uniformMatrix4fv(loc, false, new Float32Array(trans.all()));
         });
+        // console.log(trans.multiply(rot.multiply(scale)).multiplyVec3(new Vec3([0, 1, 0])).xyz);
         this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
         this.cylinderRenderPass.setup();
     }
@@ -233,6 +240,8 @@ export class SkinningAnimation extends CanvasAnimation {
             this.skeletonRenderPass.draw();
             // TODO
             // Also draw the highlighted bone (if applicable)
+            if (this.cylinder.draw)
+                this.cylinderRenderPass.draw();
             gl.enable(gl.DEPTH_TEST);
         }
     }
