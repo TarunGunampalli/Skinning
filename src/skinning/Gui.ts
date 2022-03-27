@@ -347,8 +347,7 @@ export class GUI implements IGUI {
 		const b = Vec3.difference(bone.endpoint, bone.position);
 		const scale = new Mat4([1, 0, 0, 0, b.length(), 0, 0, 0, 1]);
 		const rot = this.getBoneRotation(bone).inverse().toMat4();
-		const [x, y, z] = bone.position.xyz;
-		const trans = new Mat4([1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1]);
+		const trans = new Mat4([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...bone.position.xyz, 1]);
 		return [scale, rot, trans];
 	}
 
