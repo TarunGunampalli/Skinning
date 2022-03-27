@@ -163,8 +163,8 @@ export const cylinderVSText = `
 
     void main() {
         // gl_Position = mProj * mView * uTrans * uRot * uScale * vec4(aVertPos.xyz, 1.0);
-        gl_Position = mProj * mView * vec4(aVertPos.xyz, 1);
-        // gl_Position = vec4(aVertPos.xyz, 1);
+        // gl_Position = mProj * mView * vec4(aVertPos.xyz, 1.0);
+        gl_Position = vec4(aVertPos.xyz, 1.0);
     }
 `;
 export const cylinderFSText = `

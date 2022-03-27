@@ -218,11 +218,13 @@ export class GUI {
         if (!circleIntersect.intersect)
             return { intersect: false };
         const { t0, t1 } = circleIntersect;
+        // console.log(Vec3.sum(p, d.scale(t0, new Vec3())).xyz, Vec3.sum(p, d.scale(t1, new Vec3())).xyz);
         const y0 = Vec3.sum(p, d.scale(t0, new Vec3())).y;
         const y1 = Vec3.sum(p, d.scale(t1, new Vec3())).y;
         const b = Vec3.difference(bone.endpoint, bone.position).length();
         const intersectT0 = y0 > 0 && y0 < b;
         const intersectT1 = y1 > 0 && y1 < b;
+        // console.log(bone.endpoint.xyz, y0, y1);
         if (!intersectT0 && !intersectT1)
             return { intersect: false };
         else if (intersectT0)
