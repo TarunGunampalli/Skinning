@@ -13,12 +13,17 @@ export class Cylinder implements ICylinder {
 	// TODO: cylinder data structures
 	positions: number[];
 	indices: number[];
+	draw: boolean;
 
 	constructor() {
 		// TODO: other initialization
 		this.positions = [];
 		this.indices = [];
 		this.setVBAs();
+	}
+
+	public setDraw(d: boolean) {
+		this.draw = d;
 	}
 
 	/* Returns a flat Float32Array of the cylinder's vertex positions */

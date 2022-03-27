@@ -28,7 +28,7 @@ export class SkinningAnimation extends CanvasAnimation {
 
 	/* Floor Rendering Info */
 	private floor: Floor;
-	private floorRenderPass: RenderPass;
+	public floorRenderPass: RenderPass;
 
 	/* Scene rendering info */
 	private scene: CLoader;
@@ -38,7 +38,7 @@ export class SkinningAnimation extends CanvasAnimation {
 	private skeletonRenderPass: RenderPass;
 
 	/* Cylinder rendering info */
-	private cylinder: Cylinder;
+	public cylinder: Cylinder;
 	public cylinderRenderPass: RenderPass;
 
 	/* Scrub bar background rendering info */
@@ -358,8 +358,14 @@ export class SkinningAnimation extends CanvasAnimation {
 		);
 
 		// ? do we need uWorld?
-		this.cylinderRenderPass.addUniform("uWorld", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
-			gl.uniformMatrix4fv(loc, false, new Float32Array(Mat4.identity.all()));
+		// this.cylinderRenderPass.addUniform("uWorld", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+		// 	gl.uniformMatrix4fv(loc, false, new Float32Array(Mat4.identity.all()));
+		// });
+		this.cylinderRenderPass.addUniform("uProj", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.projMatrix().all()));
+		});
+		this.cylinderRenderPass.addUniform("uView", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.viewMatrix().all()));
 		});
 		this.cylinderRenderPass.addUniform("uScale", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(scale.all()));
@@ -370,6 +376,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		this.cylinderRenderPass.addUniform("uTrans", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(trans.all()));
 		});
+		// console.log(trans.multiply(rot.multiply(scale)).multiplyVec3(new Vec3([0, 1, 0])).xyz);
 
 		this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 		this.cylinderRenderPass.setup();
@@ -431,6 +438,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			this.skeletonRenderPass.draw();
 			// TODO
 			// Also draw the highlighted bone (if applicable)
+			if (this.cylinder.draw) this.cylinderRenderPass.draw();
 			gl.enable(gl.DEPTH_TEST);
 		}
 	}
