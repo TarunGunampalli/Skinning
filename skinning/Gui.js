@@ -235,12 +235,11 @@ export class GUI {
             return { intersect: true, t0: Math.min(t0, t1) };
     }
     circleIntersect(C, O, D) {
-        const boneRadius = 0.25;
         const L = Vec2.difference(O, C);
         const b = Vec2.dot(L, D);
         if (b > 0)
             return { intersect: false };
-        const c = L.squaredLength() - boneRadius * boneRadius;
+        const c = L.squaredLength() - GUI.boneRadius * GUI.boneRadius;
         if (c > b * b)
             return { intersect: false };
         const t = Math.sqrt(b * b - c);
@@ -263,11 +262,11 @@ export class GUI {
         return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
     }
     getBoneMatrices(bone) {
+        // return [Mat4.identity, Mat4.identity, Mat4.identity];
         const b = Vec3.difference(bone.endpoint, bone.position);
-        const scale = new Mat4([1, 0, 0, 0, b.length(), 0, 0, 0, 1]);
+        const scale = new Mat4([GUI.boneRadius, 0, 0, 0, 0, b.length(), 0, 0, 0, 0, GUI.boneRadius, 0, 0, 0, 0, 1]);
         const rot = this.getBoneRotation(bone).inverse().toMat4();
-        const [x, y, z] = bone.position.xyz;
-        const trans = new Mat4([1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1]);
+        const trans = new Mat4([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...bone.position.xyz, 1]);
         return [scale, rot, trans];
     }
     getModeString() {
@@ -428,4 +427,5 @@ GUI.rotationSpeed = 0.05;
 GUI.zoomSpeed = 0.1;
 GUI.rollSpeed = 0.1;
 GUI.panSpeed = 0.1;
+GUI.boneRadius = 0.15;
 //# sourceMappingURL=Gui.js.map
