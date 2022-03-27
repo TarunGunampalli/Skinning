@@ -249,21 +249,15 @@ export class GUI {
         const o = new Vec3([0, 1, 0]);
         const b = Vec3.difference(bone.endpoint, bone.position).normalize();
         const cos = Vec3.dot(b, o);
-        if (cos == 1)
-            return Mat3.identity;
-        else if (cos == -1)
-            return new Mat3([1, 0, 0, 0, -1, 0, 0, 0, 1]);
+        if (Math.abs(cos) == 1)
+            return new Mat3([1, 0, 0, 0, cos, 0, 0, 0, 1]);
         const sin = Vec3.cross(b, o).length();
-        const G = new Mat3([cos, sin, 0, -sin, cos, 0, 0, 0, 1]);
-        const Ginv = new Mat3([cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
+        const G = new Mat3([cos, inverse ? -sin : sin, 0, inverse ? sin : -sin, cos, 0, 0, 0, 1]);
         const u = b.copy();
         const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
         const w = Vec3.cross(o, b);
         const Finv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]);
-        if (inverse)
-            return Finv.multiply(Ginv.multiply(Finv.inverse(new Mat3())));
-        else
-            return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
+        return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
     }
     getBoneMatrices(bone) {
         const b = Vec3.difference(bone.endpoint, bone.position);
