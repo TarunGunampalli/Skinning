@@ -110,6 +110,19 @@ export class SkinningAnimation extends CanvasAnimation {
 
 		this.sBackRenderPass.setDrawData(this.ctx.TRIANGLES, 6, this.ctx.UNSIGNED_INT, 0);
 		this.sBackRenderPass.setup();
+
+		this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
+		this.cylinderRenderPass.addAttribute(
+			"aVertPos",
+			4,
+			this.ctx.FLOAT,
+			false,
+			4 * Float32Array.BYTES_PER_ELEMENT,
+			0,
+			undefined,
+			this.cylinder.positionsFlat()
+		);
+		this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 	}
 
 	public initScene(): void {
@@ -345,22 +358,6 @@ export class SkinningAnimation extends CanvasAnimation {
 	 * Sets up the cylinder drawing
 	 */
 	public initCylinder(scale: Mat4, rot: Mat4, trans: Mat4): void {
-		this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
-		this.cylinderRenderPass.addAttribute(
-			"aVertPos",
-			4,
-			this.ctx.FLOAT,
-			false,
-			4 * Float32Array.BYTES_PER_ELEMENT,
-			0,
-			undefined,
-			this.cylinder.positionsFlat()
-		);
-
-		// ? do we need uWorld?
-		// this.cylinderRenderPass.addUniform("uWorld", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
-		// 	gl.uniformMatrix4fv(loc, false, new Float32Array(Mat4.identity.all()));
-		// });
 		this.cylinderRenderPass.addUniform("uProj", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.projMatrix().all()));
 		});
@@ -376,9 +373,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		this.cylinderRenderPass.addUniform("uTrans", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(trans.all()));
 		});
-		// console.log(trans.multiply(rot.multiply(scale)).multiplyVec3(new Vec3([0, 1, 0])).xyz);
 
-		this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 		this.cylinderRenderPass.setup();
 	}
 

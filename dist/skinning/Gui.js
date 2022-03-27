@@ -172,15 +172,14 @@ export class GUI {
         if (bone.parent != -1) {
             bone.position = bones[bone.parent].endpoint.copy();
         }
+        // const initQuat = Quat.fromAxisAngle(Vec3.difference(bone.initialEndpoint, bone.initialPosition), 0);
+        // bone.rotation.multiply(rotQuat.multiply(initQuat.inverse(), new Quat()));
         bone.rotation.multiply(rotQuat);
-        this.updateEndpoint(bone);
+        const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
+        bone.endpoint = Vec3.sum(bone.position, b);
         bone.children.forEach((child) => {
             this.rotateBone(bones[child], bones, rotQuat);
         });
-    }
-    updateEndpoint(bone) {
-        const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
-        bone.endpoint = Vec3.sum(bone.position, b);
     }
     getMouseRay(x, y) {
         const ndcX = (2 * x) / this.width - 1;
@@ -218,13 +217,11 @@ export class GUI {
         if (!circleIntersect.intersect)
             return { intersect: false };
         const { t0, t1 } = circleIntersect;
-        // console.log(Vec3.sum(p, d.scale(t0, new Vec3())).xyz, Vec3.sum(p, d.scale(t1, new Vec3())).xyz);
         const y0 = Vec3.sum(p, d.scale(t0, new Vec3())).y;
         const y1 = Vec3.sum(p, d.scale(t1, new Vec3())).y;
         const b = Vec3.difference(bone.endpoint, bone.position).length();
         const intersectT0 = y0 > 0 && y0 < b;
         const intersectT1 = y1 > 0 && y1 < b;
-        // console.log(bone.endpoint.xyz, y0, y1);
         if (!intersectT0 && !intersectT1)
             return { intersect: false };
         else if (intersectT0)
@@ -239,7 +236,7 @@ export class GUI {
         const b = Vec2.dot(L, D);
         if (b > 0)
             return { intersect: false };
-        const c = L.squaredLength() - GUI.boneRadius * GUI.boneRadius;
+        const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
         if (c > b * b)
             return { intersect: false };
         const t = Math.sqrt(b * b - c);
@@ -347,9 +344,8 @@ export class GUI {
                     const bone = this.intersectedBone.bone;
                     const rotAxis = Vec3.difference(bone.endpoint, bone.position);
                     const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
-                    // bone.rotation.multiply(rotQuat);
-                    // this.updateEndpoint(bone);
                     this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
+                    this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
                 }
                 else {
                     this.camera.roll(GUI.rollSpeed, false);
@@ -361,9 +357,8 @@ export class GUI {
                     const bone = this.intersectedBone.bone;
                     const rotAxis = Vec3.difference(bone.endpoint, bone.position);
                     const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
-                    // bone.rotation.multiply(rotQuat);
-                    // this.updateEndpoint(bone);
                     this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
+                    this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
                 }
                 else {
                     this.camera.roll(GUI.rollSpeed, true);
@@ -424,5 +419,5 @@ GUI.rotationSpeed = 0.05;
 GUI.zoomSpeed = 0.1;
 GUI.rollSpeed = 0.1;
 GUI.panSpeed = 0.1;
-GUI.boneRadius = 0.15;
+GUI.boneRadius = 0.05;
 //# sourceMappingURL=Gui.js.map

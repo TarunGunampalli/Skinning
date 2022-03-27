@@ -167,7 +167,7 @@ export const cylinderVSText = `
     uniform mat4 uTrans;
 
     void main() {
-        gl_Position = uProj * uView * uTrans * uRot * uScale * vec4(aVertPos.xyz, 1.0);
+        gl_Position = uProj * uView * uTrans * uRot * uScale * vec4(cos(aVertPos.x), aVertPos.y, sin(aVertPos.x), 1.0);
     }
 `;
 export const cylinderFSText = `

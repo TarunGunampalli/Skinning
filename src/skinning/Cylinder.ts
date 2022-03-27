@@ -51,24 +51,12 @@ export class Cylinder implements ICylinder {
 	private setVBAs() {
 		const n = 10;
 		const inc = (2 * Math.PI) / n;
-		this.positions.push(1, 0, 0, 0, 1, 0.5, 0, 0, 1, 1, 0, 0);
-		for (let theta = inc; theta < 2 * Math.PI; theta += inc) {
+		this.positions.push(0, 0, 0, 0, 0, 0.5, 0, 0, 0, 1, 0, 0);
+		for (let theta = inc; theta <= 2 * Math.PI; theta += inc) {
 			const s = this.positions.length / 4;
-			this.positions.push(
-				Math.cos(theta + inc),
-				0,
-				Math.sin(theta + inc),
-				0,
-				Math.cos(theta + inc),
-				0.5,
-				Math.sin(theta + inc),
-				0,
-				Math.cos(theta + inc),
-				1,
-				Math.sin(theta + inc),
-				0
-			);
+			this.positions.push(theta, 0, 0, 0, theta, 0.5, 0, 0, theta, 1, 0, 0);
 			[0, 1, 3, 3, 1, 4, 1, 2, 4, 4, 2, 5].forEach((i) => this.indices.push(s - 3 + i));
+			[0, 3, 1, 3, 4, 1, 1, 4, 2, 4, 5, 2].forEach((i) => this.indices.push(s - 3 + i));
 		}
 	}
 }

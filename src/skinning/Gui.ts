@@ -50,7 +50,7 @@ export class GUI implements IGUI {
 	private static readonly zoomSpeed: number = 0.1;
 	private static readonly rollSpeed: number = 0.1;
 	private static readonly panSpeed: number = 0.1;
-	private static boneRadius = 0.15;
+	private static boneRadius = 0.05;
 
 	private camera: Camera;
 	private dragging: boolean;
@@ -254,17 +254,15 @@ export class GUI implements IGUI {
 			bone.position = bones[bone.parent].endpoint.copy();
 		}
 
+		// const initQuat = Quat.fromAxisAngle(Vec3.difference(bone.initialEndpoint, bone.initialPosition), 0);
+		// bone.rotation.multiply(rotQuat.multiply(initQuat.inverse(), new Quat()));
 		bone.rotation.multiply(rotQuat);
-		this.updateEndpoint(bone);
+		const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
+		bone.endpoint = Vec3.sum(bone.position, b);
 
 		bone.children.forEach((child) => {
 			this.rotateBone(bones[child], bones, rotQuat);
 		});
-	}
-
-	private updateEndpoint(bone: Bone): void {
-		const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
-		bone.endpoint = Vec3.sum(bone.position, b);
 	}
 
 	private getMouseRay(x: number, y: number): Ray {
@@ -305,13 +303,11 @@ export class GUI implements IGUI {
 		const circleIntersect = this.circleIntersect(C, O, D.normalize());
 		if (!circleIntersect.intersect) return { intersect: false };
 		const { t0, t1 } = circleIntersect;
-		// console.log(Vec3.sum(p, d.scale(t0, new Vec3())).xyz, Vec3.sum(p, d.scale(t1, new Vec3())).xyz);
 		const y0 = Vec3.sum(p, d.scale(t0, new Vec3())).y;
 		const y1 = Vec3.sum(p, d.scale(t1, new Vec3())).y;
 		const b = Vec3.difference(bone.endpoint, bone.position).length();
 		const intersectT0 = y0 > 0 && y0 < b;
 		const intersectT1 = y1 > 0 && y1 < b;
-		// console.log(bone.endpoint.xyz, y0, y1);
 		if (!intersectT0 && !intersectT1) return { intersect: false };
 		else if (intersectT0) return { intersect: true, t0 };
 		else if (intersectT1) return { intersect: true, t0: t1 };
@@ -322,7 +318,7 @@ export class GUI implements IGUI {
 		const L = Vec2.difference(O, C);
 		const b = Vec2.dot(L, D);
 		if (b > 0) return { intersect: false };
-		const c = L.squaredLength() - GUI.boneRadius * GUI.boneRadius;
+		const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
 		if (c > b * b) return { intersect: false };
 		const t = Math.sqrt(b * b - c);
 		return { intersect: true, t0: -b - t, t1: -b + t };
@@ -434,9 +430,8 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
-					// bone.rotation.multiply(rotQuat);
-					// this.updateEndpoint(bone);
 					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
+					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
 				} else {
 					this.camera.roll(GUI.rollSpeed, false);
 				}
@@ -447,9 +442,8 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
-					// bone.rotation.multiply(rotQuat);
-					// this.updateEndpoint(bone);
 					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
+					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
 				} else {
 					this.camera.roll(GUI.rollSpeed, true);
 				}

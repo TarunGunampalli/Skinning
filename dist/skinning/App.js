@@ -53,6 +53,9 @@ export class SkinningAnimation extends CanvasAnimation {
         this.sBackRenderPass.addAttribute("vertPosition", 2, this.ctx.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, verts);
         this.sBackRenderPass.setDrawData(this.ctx.TRIANGLES, 6, this.ctx.UNSIGNED_INT, 0);
         this.sBackRenderPass.setup();
+        this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
+        this.cylinderRenderPass.addAttribute("aVertPos", 4, this.ctx.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, this.cylinder.positionsFlat());
+        this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
     }
     initScene() {
         if (this.scene.meshes.length === 0) {
@@ -167,12 +170,6 @@ export class SkinningAnimation extends CanvasAnimation {
      * Sets up the cylinder drawing
      */
     initCylinder(scale, rot, trans) {
-        this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
-        this.cylinderRenderPass.addAttribute("aVertPos", 4, this.ctx.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, this.cylinder.positionsFlat());
-        // ? do we need uWorld?
-        // this.cylinderRenderPass.addUniform("uWorld", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
-        // 	gl.uniformMatrix4fv(loc, false, new Float32Array(Mat4.identity.all()));
-        // });
         this.cylinderRenderPass.addUniform("uProj", (gl, loc) => {
             gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.projMatrix().all()));
         });
@@ -188,8 +185,6 @@ export class SkinningAnimation extends CanvasAnimation {
         this.cylinderRenderPass.addUniform("uTrans", (gl, loc) => {
             gl.uniformMatrix4fv(loc, false, new Float32Array(trans.all()));
         });
-        // console.log(trans.multiply(rot.multiply(scale)).multiplyVec3(new Vec3([0, 1, 0])).xyz);
-        this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
         this.cylinderRenderPass.setup();
     }
     /** @internal
