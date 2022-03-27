@@ -50,6 +50,7 @@ export class GUI implements IGUI {
 	private static readonly zoomSpeed: number = 0.1;
 	private static readonly rollSpeed: number = 0.1;
 	private static readonly panSpeed: number = 0.1;
+	private static boneRadius = 0.15;
 
 	private camera: Camera;
 	private dragging: boolean;
@@ -318,11 +319,10 @@ export class GUI implements IGUI {
 	}
 
 	private circleIntersect(C: Vec2, O: Vec2, D: Vec2): Intersection {
-		const boneRadius = 0.25;
 		const L = Vec2.difference(O, C);
 		const b = Vec2.dot(L, D);
 		if (b > 0) return { intersect: false };
-		const c = L.squaredLength() - boneRadius * boneRadius;
+		const c = L.squaredLength() - GUI.boneRadius * GUI.boneRadius;
 		if (c > b * b) return { intersect: false };
 		const t = Math.sqrt(b * b - c);
 		return { intersect: true, t0: -b - t, t1: -b + t };
@@ -344,8 +344,9 @@ export class GUI implements IGUI {
 	}
 
 	private getBoneMatrices(bone: Bone): [Mat4, Mat4, Mat4] {
+		// return [Mat4.identity, Mat4.identity, Mat4.identity];
 		const b = Vec3.difference(bone.endpoint, bone.position);
-		const scale = new Mat4([1, 0, 0, 0, b.length(), 0, 0, 0, 1]);
+		const scale = new Mat4([GUI.boneRadius, 0, 0, 0, 0, b.length(), 0, 0, 0, 0, GUI.boneRadius, 0, 0, 0, 0, 1]);
 		const rot = this.getBoneRotation(bone).inverse().toMat4();
 		const trans = new Mat4([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...bone.position.xyz, 1]);
 		return [scale, rot, trans];
