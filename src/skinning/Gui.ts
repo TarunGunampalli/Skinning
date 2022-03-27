@@ -295,7 +295,7 @@ export class GUI implements IGUI {
 	}
 
 	private boneIntersect(bone: Bone, ray: Ray): Intersection {
-		const rotMat = this.getBoneRotation(bone);
+		const rotMat = this.getBoneRotation(bone, false);
 		const p = Vec3.difference(ray.pos, bone.position).multiplyMat3(rotMat);
 		const d = ray.dir.multiplyMat3(rotMat, new Vec3()).normalize();
 
@@ -328,7 +328,7 @@ export class GUI implements IGUI {
 		return { intersect: true, t0: -b - t, t1: -b + t };
 	}
 
-	private getBoneRotation(bone: Bone): Mat3 {
+	private getBoneRotation(bone: Bone, inverse: boolean): Mat3 {
 		const o = new Vec3([0, 1, 0]);
 		const b = Vec3.difference(bone.endpoint, bone.position).normalize();
 		const cos = Vec3.dot(b, o);
@@ -336,18 +336,19 @@ export class GUI implements IGUI {
 		else if (cos == -1) return new Mat3([1, 0, 0, 0, -1, 0, 0, 0, 1]);
 		const sin = Vec3.cross(b, o).length();
 		const G = new Mat3([cos, sin, 0, -sin, cos, 0, 0, 0, 1]);
+		const Ginv = new Mat3([cos, -sin, 0, sin, cos, 0, 0, 0, 1]);
 		const u = b.copy();
 		const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
 		const w = Vec3.cross(o, b);
 		const Finv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]);
-		return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
+		if (inverse) return Finv.multiply(Ginv.multiply(Finv.inverse(new Mat3())));
+		else return Finv.multiply(G.multiply(Finv.inverse(new Mat3())));
 	}
 
 	private getBoneMatrices(bone: Bone): [Mat4, Mat4, Mat4] {
-		// return [Mat4.identity, Mat4.identity, Mat4.identity];
 		const b = Vec3.difference(bone.endpoint, bone.position);
 		const scale = new Mat4([GUI.boneRadius, 0, 0, 0, 0, b.length(), 0, 0, 0, 0, GUI.boneRadius, 0, 0, 0, 0, 1]);
-		const rot = this.getBoneRotation(bone).inverse().toMat4();
+		const rot = this.getBoneRotation(bone, true).toMat4();
 		const trans = new Mat4([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...bone.position.xyz, 1]);
 		return [scale, rot, trans];
 	}

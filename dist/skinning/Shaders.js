@@ -68,11 +68,12 @@ export const sceneVSText = `
     uniform vec4 jRots[64];
 
     void main () {
-        float weight = skinWeights.x * vec4(jTrans[int(skinIndices.x)], 1) * jRots[int(skinIndices.x)];
-        weight += skinWeights.y * jTrans[int(skinIndices.y)] * jRots[int(skinIndices.y)];
-        weight += skinWeights.z * jTrans[int(skinIndices.z)] * jRots[int(skinIndices.z)];
-        weight += skinWeights.w * jTrans[int(skinIndices.w)] * jRots[int(skinIndices.w)];
-        vec3 trans = weight * vertPosition;
+        // float weight = skinWeights.x * vec4(jTrans[int(skinIndices.x)], 1) * jRots[int(skinIndices.x)];
+        // weight += skinWeights.y * jTrans[int(skinIndices.y)] * jRots[int(skinIndices.y)];
+        // weight += skinWeights.z * jTrans[int(skinIndices.z)] * jRots[int(skinIndices.z)];
+        // weight += skinWeights.w * jTrans[int(skinIndices.w)] * jRots[int(skinIndices.w)];
+        // vec3 trans = weight * vertPosition;
+        vec3 trans = vertPosition;
         vec4 worldPosition = mWorld * vec4(trans, 1.0);
         gl_Position = mProj * mView * worldPosition;
         
