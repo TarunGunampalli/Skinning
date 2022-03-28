@@ -180,7 +180,6 @@ class CLoader {
         this.loader.load(this.fileLocation, (collada) => {
             console.log(`File ${this.fileLocation} loaded successfully`);
             collada.scene.updateWorldMatrix(true, true);
-            console.log(collada);
             this.scene = collada.scene;
             this.findSkinnedMeshes();
             this.skinnedMeshes.forEach((m) => {

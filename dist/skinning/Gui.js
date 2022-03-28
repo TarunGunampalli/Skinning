@@ -166,16 +166,20 @@ export class GUI {
         }
     }
     rotateBone(bone, bones, rotQuat) {
-        if (bone.parent != -1) {
-            bone.position = bones[bone.parent].endpoint.copy();
-        }
+        // if (bone.parent != -1) {
+        // 	bone.position = bones[bone.parent].endpoint.copy();
+        // }
         // const initQuat = Quat.fromAxisAngle(Vec3.difference(bone.initialEndpoint, bone.initialPosition), 0);
         // bone.rotation.multiply(rotQuat.multiply(initQuat.inverse(), new Quat()));
         bone.rotation.multiply(rotQuat);
+        const prevEndpoint = bone.endpoint.copy();
         const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition).multiplyByQuat(bone.rotation);
         bone.endpoint = Vec3.sum(bone.position, b);
-        bone.children.forEach((child) => {
-            this.rotateBone(bones[child], bones, rotQuat);
+        bone.children.forEach((c) => {
+            const child = bones[c];
+            const offset = Vec3.difference(child.position, prevEndpoint);
+            child.position = Vec3.sum(bone.endpoint, offset);
+            this.rotateBone(child, bones, rotQuat);
         });
     }
     getMouseRay(x, y) {
@@ -232,11 +236,10 @@ export class GUI {
             return { intersect: true, t0: Math.min(t0, t1) };
     }
     circleIntersect(O, D) {
-        const L = O.copy();
-        const b = Vec2.dot(L, D);
+        const b = Vec2.dot(O, D);
         if (b > 0)
             return { intersect: false };
-        const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
+        const c = O.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
         if (c > b * b)
             return { intersect: false };
         const t = Math.sqrt(b * b - c);

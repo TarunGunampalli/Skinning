@@ -69,13 +69,18 @@ export const sceneVSText = `
     uniform vec3 jTrans[64];
     uniform vec4 jRots[64];
 
+    // https://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
+    vec3 rotVertQuat(vec4 position, vec4 q) { 
+        vec3 v = position.xyz;
+        return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
+    }
+
+
     void main () {
-        // float weight = skinWeights.x * vec4(jTrans[int(skinIndices.x)], 1) * jRots[int(skinIndices.x)];
-        // weight += skinWeights.y * jTrans[int(skinIndices.y)] * jRots[int(skinIndices.y)];
-        // weight += skinWeights.z * jTrans[int(skinIndices.z)] * jRots[int(skinIndices.z)];
-        // weight += skinWeights.w * jTrans[int(skinIndices.w)] * jRots[int(skinIndices.w)];
-        // vec3 trans = weight * vertPosition;
-        vec3 trans = vertPosition;
+        vec3 trans = skinWeights.x * (jTrans[int(skinIndices.x)] + rotVertQuat(v0, jRots[int(skinIndices.x)]));
+        trans += skinWeights.y * (jTrans[int(skinIndices.y)] + rotVertQuat(v1, jRots[int(skinIndices.y)]));
+        trans += skinWeights.z * (jTrans[int(skinIndices.z)] + rotVertQuat(v2, jRots[int(skinIndices.z)]));
+        trans += skinWeights.w * (jTrans[int(skinIndices.w)] + rotVertQuat(v3, jRots[int(skinIndices.w)]));
         vec4 worldPosition = mWorld * vec4(trans, 1.0);
         gl_Position = mProj * mView * worldPosition;
         

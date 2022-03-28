@@ -237,7 +237,6 @@ class CLoader {
 			(collada: Collada) => {
 				console.log(`File ${this.fileLocation} loaded successfully`);
 				collada.scene.updateWorldMatrix(true, true);
-				console.log(collada);
 				this.scene = collada.scene;
 				this.findSkinnedMeshes();
 				this.skinnedMeshes.forEach((m) => {
