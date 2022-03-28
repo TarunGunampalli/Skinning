@@ -166,9 +166,6 @@ export class GUI {
         }
     }
     rotateBone(bone, bones, rotQuat) {
-        // if (bone.parent != -1) {
-        // 	bone.position = bones[bone.parent].endpoint.copy();
-        // }
         // const initQuat = Quat.fromAxisAngle(Vec3.difference(bone.initialEndpoint, bone.initialPosition), 0);
         // bone.rotation.multiply(rotQuat.multiply(initQuat.inverse(), new Quat()));
         bone.rotation.multiply(rotQuat);

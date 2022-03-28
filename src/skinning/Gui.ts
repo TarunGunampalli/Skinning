@@ -247,10 +247,6 @@ export class GUI implements IGUI {
 	}
 
 	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat) {
-		// if (bone.parent != -1) {
-		// 	bone.position = bones[bone.parent].endpoint.copy();
-		// }
-
 		// const initQuat = Quat.fromAxisAngle(Vec3.difference(bone.initialEndpoint, bone.initialPosition), 0);
 		// bone.rotation.multiply(rotQuat.multiply(initQuat.inverse(), new Quat()));
 		bone.rotation.multiply(rotQuat);
