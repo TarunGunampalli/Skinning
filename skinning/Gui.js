@@ -83,9 +83,6 @@ export class GUI {
         // TODO
         // Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
         this.intersectedBone.clicked = !!this.intersectedBone.bone;
-        // if (this.intersectedBone.clicked) {
-        // 	console.log(this.intersectedBone.bone.endpoint.xyz);
-        // }
         this.dragging = true;
         this.prevX = mouse.screenX;
         this.prevY = mouse.screenY;
@@ -217,26 +214,37 @@ export class GUI {
         if (!circleIntersect.intersect)
             return { intersect: false };
         const { t0, t1 } = circleIntersect;
-        const y0 = Vec3.sum(p, d.scale(t0, new Vec3())).y;
-        const y1 = Vec3.sum(p, d.scale(t1, new Vec3())).y;
+        d.scale(D.x / d.x);
+        const y0 = p.y + Math.min(t0 * d.y, t1 * d.y);
+        const y1 = p.y + Math.max(t0 * d.y, t1 * d.y);
         const b = Vec3.difference(bone.endpoint, bone.position).length();
-        const intersectT0 = y0 > 0 && y0 < b;
-        const intersectT1 = y1 > 0 && y1 < b;
-        if (!intersectT0 && !intersectT1)
+        const intersectT0 = y0 >= 0 && y0 <= b;
+        const intersectT1 = y1 >= 0 && y1 <= b;
+        const intersectCaps = y0 <= 0 && y1 >= b;
+        if (!intersectT0 && !intersectT1 && !intersectCaps)
             return { intersect: false };
         else if (intersectT0)
             return { intersect: true, t0 };
         else if (intersectT1)
             return { intersect: true, t0: t1 };
+        else if (intersectCaps)
+            return { intersect: true, t0: Math.min(-p.y / d.y, (b - p.y) / d.y) };
         else
             return { intersect: true, t0: Math.min(t0, t1) };
     }
     circleIntersect(C, O, D) {
-        const L = Vec2.difference(O, C);
-        const b = Vec2.dot(L, D);
-        if (b > 0)
-            return { intersect: false };
-        const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
+        // https://antongerdelan.net/opengl/raycasting.html?msclkid=00ccd855ab0411ecbc23b627040c3f0f
+        // const L = Vec2.difference(O, C);
+        // const b = Vec2.dot(L, D);
+        // if (b > 0) return { intersect: false };
+        // const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
+        // if (c > b * b) return { intersect: false };
+        // const t = Math.sqrt(b * b - c);
+        // return { intersect: true, t0: -b - t, t1: -b + t };
+        // https://www.cl.cam.ac.uk/teaching/1999/AGraphHCI/SMAG/node2.html#eqn:rectcyl
+        const b = Vec2.dot(O, D);
+        // if (b > 0) return { intersect: false };
+        const c = O.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
         if (c > b * b)
             return { intersect: false };
         const t = Math.sqrt(b * b - c);
