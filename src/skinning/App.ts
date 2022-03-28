@@ -273,6 +273,8 @@ export class SkinningAnimation extends CanvasAnimation {
 			gl.uniform4fv(loc, this.scene.meshes[0].getBoneRotations());
 		});
 
+		this.sceneRenderPass.addTextureMap(this.scene.meshes[0].imgSrc);
+
 		this.sceneRenderPass.setDrawData(this.ctx.TRIANGLES, this.scene.meshes[0].geometry.position.count, this.ctx.UNSIGNED_INT, 0);
 		this.sceneRenderPass.setup();
 	}
