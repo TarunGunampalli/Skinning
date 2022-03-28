@@ -314,10 +314,9 @@ export class GUI implements IGUI {
 	}
 
 	private circleIntersect(O: Vec2, D: Vec2): Intersection {
-		const L = O.copy();
-		const b = Vec2.dot(L, D);
+		const b = Vec2.dot(O, D);
 		if (b > 0) return { intersect: false };
-		const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
+		const c = O.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
 		if (c > b * b) return { intersect: false };
 		const t = Math.sqrt(b * b - c);
 		return { intersect: true, t0: -b - t, t1: -b + t };
