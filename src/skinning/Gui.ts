@@ -294,10 +294,9 @@ export class GUI implements IGUI {
 		const p = Vec3.difference(ray.pos, bone.position).multiplyMat3(rotMat);
 		const d = ray.dir.multiplyMat3(rotMat, new Vec3()).normalize();
 
-		const C = new Vec2([0, 0]);
 		const O = new Vec2([p.x, p.z]);
 		const D = new Vec2([d.x, d.z]);
-		const circleIntersect = this.circleIntersect(C, O, D.normalize());
+		const circleIntersect = this.circleIntersect(O, D.normalize());
 		if (!circleIntersect.intersect) return { intersect: false };
 		const { t0, t1 } = circleIntersect;
 		d.scale(D.x / d.x);
@@ -314,20 +313,11 @@ export class GUI implements IGUI {
 		else return { intersect: true, t0: Math.min(t0, t1) };
 	}
 
-	private circleIntersect(C: Vec2, O: Vec2, D: Vec2): Intersection {
-		// https://antongerdelan.net/opengl/raycasting.html?msclkid=00ccd855ab0411ecbc23b627040c3f0f
-		// const L = Vec2.difference(O, C);
-		// const b = Vec2.dot(L, D);
-		// if (b > 0) return { intersect: false };
-		// const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
-		// if (c > b * b) return { intersect: false };
-		// const t = Math.sqrt(b * b - c);
-		// return { intersect: true, t0: -b - t, t1: -b + t };
-
-		// https://www.cl.cam.ac.uk/teaching/1999/AGraphHCI/SMAG/node2.html#eqn:rectcyl
-		const b = Vec2.dot(O, D);
-		// if (b > 0) return { intersect: false };
-		const c = O.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
+	private circleIntersect(O: Vec2, D: Vec2): Intersection {
+		const L = O.copy();
+		const b = Vec2.dot(L, D);
+		if (b > 0) return { intersect: false };
+		const c = L.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
 		if (c > b * b) return { intersect: false };
 		const t = Math.sqrt(b * b - c);
 		return { intersect: true, t0: -b - t, t1: -b + t };
