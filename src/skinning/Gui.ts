@@ -206,17 +206,17 @@ export class GUI implements IGUI {
 						const b = Vec3.difference(bone.endpoint, bone.position);
 						const l = b.length();
 						b.normalize();
-						const prevEndpoint = bone.endpoint.copy();
 						const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
 						const newB = Vec3.difference(end, bone.position).normalize();
-						const w = Vec3.dot(b, newB);
-						const [x, y, z] = Vec3.cross(b, newB).xyz;
+						const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+						const w = Vec3.dot(initialB, newB);
+						const [x, y, z] = Vec3.cross(initialB, newB).xyz;
 						let rotQuat = new Quat([x, y, z, w + 1]).normalize();
 						if (w == 1) rotQuat.setIdentity();
 						// else if (w == 1) rotQuat = new Quat([1, 0, 0, 1]).normalize();
 
 						bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
-						this.rotateBone(bone, bones, rotQuat, prevEndpoint);
+						this.rotateBone(bone, bones, rotQuat);
 					} else {
 						this.rotateCamera(mouseDir);
 					}
@@ -246,14 +246,17 @@ export class GUI implements IGUI {
 		}
 	}
 
-	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat, prevEndpoint: Vec3) {
-		bone.rotation.multiply(rotQuat);
+	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat) {
+		bone.rotation = rotQuat.copy();
+		const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+		b.multiplyByQuat(bone.rotation);
+		bone.endpoint = Vec3.sum(bone.position, b);
 
 		bone.children.forEach((c) => {
 			const child = bones[c];
-			const offset = Vec3.difference(child.position, prevEndpoint);
+			const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
 			child.position = Vec3.sum(bone.endpoint, offset);
-			this.rotateBone(child, bones, rotQuat, child.endpoint);
+			this.rotateBone(child, bones, rotQuat);
 		});
 	}
 
@@ -282,21 +285,21 @@ export class GUI implements IGUI {
 	private findBone(mouseRay: Ray): BoneIntersection {
 		const scene = this.animation.getScene();
 		let intersectedBone: BoneIntersection = { bone: undefined, t: -1, bones: [], clicked: this.intersectedBone.clicked };
-		scene.meshes.forEach((mesh) => {
-			mesh.bones.forEach((bone) => {
-				const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
-				if (intersect) {
-					if (intersectedBone.t == -1 || t < intersectedBone.t) {
-						intersectedBone = {
-							bone: this.intersectedBone.clicked ? this.intersectedBone.bone : bone,
-							t,
-							bones: mesh.bones,
-							clicked: intersectedBone.clicked,
-						};
-					}
+		// scene.meshes.forEach((mesh) => {
+		scene.meshes[0].bones.forEach((bone) => {
+			const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
+			if (intersect) {
+				if (intersectedBone.t == -1 || t < intersectedBone.t) {
+					intersectedBone = {
+						bone: this.intersectedBone.clicked ? this.intersectedBone.bone : bone,
+						t,
+						bones: scene.meshes[0].bones,
+						clicked: intersectedBone.clicked,
+					};
 				}
-			});
+			}
 		});
+		// });
 		return intersectedBone;
 	}
 
@@ -442,7 +445,7 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
-					this.rotateBone(bone, this.intersectedBone.bones, rotQuat, bone.endpoint);
+					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
 					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
 				} else {
 					this.camera.roll(GUI.rollSpeed, false);
@@ -454,7 +457,7 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
-					this.rotateBone(bone, this.intersectedBone.bones, rotQuat, bone.endpoint);
+					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
 					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
 				} else {
 					this.camera.roll(GUI.rollSpeed, true);
