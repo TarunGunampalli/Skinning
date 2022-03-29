@@ -285,7 +285,6 @@ export class GUI implements IGUI {
 	private findBone(mouseRay: Ray): BoneIntersection {
 		const scene = this.animation.getScene();
 		let intersectedBone: BoneIntersection = { bone: undefined, t: -1, bones: [], clicked: this.intersectedBone.clicked };
-		// scene.meshes.forEach((mesh) => {
 		scene.meshes[0].bones.forEach((bone) => {
 			const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
 			if (intersect) {
@@ -299,7 +298,6 @@ export class GUI implements IGUI {
 				}
 			}
 		});
-		// });
 		return intersectedBone;
 	}
 
