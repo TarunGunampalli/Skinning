@@ -69,26 +69,52 @@ export const sceneVSText = `
     uniform vec3 jTrans[64];
     uniform vec4 jRots[64];
 
-    // https://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
-    vec3 rotVertQuat(vec4 position, vec4 q) { 
-        vec3 v = position.xyz;
-        return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
+    // // https://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
+    // vec3 rotVertQuat(vec4 position, vec4 q) { 
+    //     vec3 v = position.xyz;
+    //     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
+    // }
+
+    vec4 multQuat(vec3 vt, vec4 qr) {
+        vec4 qt = vec4(vt.xyz, 0);
+        vec3 vr = vec3(qr.xyz);
+        float w = qt.w * qr.w - dot(vt, vr);
+        vec3 v = qt.w * vr + qr.w * vt + cross(vt, vr);
+        vec4 q = vec4(v.xyz, w);
+        return normalize(q);
     }
 
-
     void main () {
-        vec3 trans = skinWeights.x * (jTrans[int(skinIndices.x)] + rotVertQuat(v0, jRots[int(skinIndices.x)]));
-        trans += skinWeights.y * (jTrans[int(skinIndices.y)] + rotVertQuat(v1, jRots[int(skinIndices.y)]));
-        trans += skinWeights.z * (jTrans[int(skinIndices.z)] + rotVertQuat(v2, jRots[int(skinIndices.z)]));
-        trans += skinWeights.w * (jTrans[int(skinIndices.w)] + rotVertQuat(v3, jRots[int(skinIndices.w)]));
-        vec4 worldPosition = mWorld * vec4(trans, 1.0);
+        vec4 qd = skinWeights.x * 0.5 * (multQuat(jTrans[int(skinIndices.x)], jRots[int(skinIndices.x)]));
+        qd += skinWeights.y * 0.5 * (multQuat(jTrans[int(skinIndices.y)], jRots[int(skinIndices.y)]));
+        qd += skinWeights.z * 0.5 * (multQuat(jTrans[int(skinIndices.z)], jRots[int(skinIndices.z)]));
+        qd += skinWeights.w * 0.5 * (multQuat(jTrans[int(skinIndices.w)], jRots[int(skinIndices.w)]));
+        qd = normalize(qd);
+
+        vec4 qr = skinWeights.x * jRots[int(skinIndices.x)];
+        qr += skinWeights.y * jRots[int(skinIndices.y)];
+        qr += skinWeights.z * jRots[int(skinIndices.z)];
+        qr += skinWeights.w * jRots[int(skinIndices.w)];
+        qr = normalize(qr);
+
+        vec3 r = vec3(qr.xyz);
+        vec3 t = vec3(qd.xyz);
+        
+        vec3 v = vertPosition;
+        v = v + 2.0 * cross(r, cross(r, v) + qr.w * v) + 2.0 * (qr.w * t - qd.w * r + cross(r, t));
+        vec3 n = vec3(normal.xyz);
+        n = n + 2.0 * cross(r, cross(r, n) + qr.w * n);
+
+        // vec4 worldPosition = mWorld * vec4(trans, 1.0);
+        vec4 worldPosition = mWorld * vec4(v.xyz, 1);
         gl_Position = mProj * mView * worldPosition;
         
         //  Compute light direction and transform to camera coordinates
         lightDir = lightPosition - worldPosition;
         
         vec4 aNorm4 = vec4(aNorm, 0.0);
-        normal = normalize(mWorld * vec4(aNorm, 0.0));
+        // normal = normalize(mWorld * vec4(aNorm, 0.0));
+        normal = normalize(mWorld * vec4(n.xyz, 1));
 
         uv = aUV;
     }
