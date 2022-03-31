@@ -212,8 +212,6 @@ export class GUI implements IGUI {
 						const w = Vec3.dot(initialB, newB);
 						const [x, y, z] = Vec3.cross(initialB, newB).xyz;
 						let rotQuat = new Quat([x, y, z, w + 1]).normalize();
-						if (w == 1) rotQuat.setIdentity();
-						// else if (w == 1) rotQuat = new Quat([1, 0, 0, 1]).normalize();
 
 						bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
 						this.rotateBone(bone, bones, rotQuat);
@@ -247,7 +245,7 @@ export class GUI implements IGUI {
 	}
 
 	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat) {
-		bone.rotation = rotQuat.copy();
+		bone.rotation = rotQuat.copy().normalize();
 		const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 		b.multiplyByQuat(bone.rotation);
 		bone.endpoint = Vec3.sum(bone.position, b);
