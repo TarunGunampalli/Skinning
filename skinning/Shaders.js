@@ -67,14 +67,7 @@ export const sceneVSText = `
     uniform vec3 jTrans[64];
     uniform vec4 jRots[64];
 
-    // // https://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
-    // vec3 rotVertQuat(vec4 position, vec4 q) { 
-    //     vec3 v = position.xyz;
-    //     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
-    // }
-
     vec4 multQuat(vec3 vt, vec4 qr) {
-        qr = normalize(qr);
         vec4 qt = vec4(vt.xyz, 0);
         vec3 vr = vec3(qr.xyz);
         float w = qt.w * qr.w - dot(vt, vr);
@@ -90,49 +83,22 @@ export const sceneVSText = `
         return v + 2.0 * cross(r, cross(r, v) + qr.w * v) + 2.0 * (qr.w * t - qd.w * r + cross(r, t));
     }
 
-    vec3 computeNormal(vec4 normal, vec4 qd, vec4 qr) {
-        vec3 n = vec3(normal.xyz);
-        vec3 t = vec3(qd.xyz);
-        vec3 r = vec3(qr.xyz);
-        return n + 2.0 * cross(r, cross(r, n) + qr.w * n);
-    }
-
     void main () {
         vec4 qdx = 0.5 * multQuat(jTrans[int(skinIndices.x)], jRots[int(skinIndices.x)]);
         vec4 qdy = 0.5 * multQuat(jTrans[int(skinIndices.y)], jRots[int(skinIndices.y)]);
         vec4 qdz = 0.5 * multQuat(jTrans[int(skinIndices.z)], jRots[int(skinIndices.z)]);
         vec4 qdw = 0.5 * multQuat(jTrans[int(skinIndices.w)], jRots[int(skinIndices.w)]);
-        // vec4 qd = skinWeights.x * qdx + skinWeights.y * qdy + skinWeights.z * qdz + skinWeights.w * qdw;
-        // qd /= skinWeights.x * length(qdx) + skinWeights.y * length(qdy) + skinWeights.z * length(qdz) + skinWeights.w * length(qdw);
-
 
         vec4 qrx = jRots[int(skinIndices.x)];
         vec4 qry = jRots[int(skinIndices.y)];
         vec4 qrz = jRots[int(skinIndices.z)];
         vec4 qrw = jRots[int(skinIndices.w)];
-        // vec4 qr = skinWeights.x * qrx + skinWeights.y * qry + skinWeights.z * qrz + skinWeights.w * qrw;
-        // qr /= length(qd);
-        // qr /= skinWeights.x * length(qrx) + skinWeights.y * length(qry) + skinWeights.z * length(qrz) + skinWeights.w * length(qrw);
-
-        // vec4 qr = jRots[int(skinIndices.x)];
 
         vec3 v = skinWeights.x * computeVertex(v0, qdx, qrx);
         v += skinWeights.y * computeVertex(v1, qdy, qry);
         v += skinWeights.z * computeVertex(v2, qdz, qrz);
         v += skinWeights.w * computeVertex(v3, qdw, qrw);
 
-        vec3 n = skinWeights.x * computeNormal(normal, qdx, qrx);
-        n += skinWeights.y * computeNormal(normal, qdy, qry);
-        n += skinWeights.z * computeNormal(normal, qdz, qrz);
-        n += skinWeights.w * computeNormal(normal, qdw, qrw);
-        
-        // vec3 v = vertPosition;
-        // v = v + 2.0 * cross(r, cross(r, v) + qr.w * v) + 2.0 * (qr.w * t - qd.w * r + cross(r, t));
-        // vec3 n = vec3(normal.xyz);
-        // vec3 n = vec3((mWorld * normal).xyz);
-        // n = n + 2.0 * cross(r, cross(r, n) + qr.w * n);
-
-        // vec4 worldPosition = mWorld * vec4(trans, 1.0);
         vec4 worldPosition = mWorld * vec4(v.xyz, 1.0);
         gl_Position = mProj * mView * worldPosition;
         
@@ -141,8 +107,6 @@ export const sceneVSText = `
         
         vec4 aNorm4 = vec4(aNorm, 0.0);
         normal = normalize(mWorld * vec4(aNorm, 0.0));
-        // normal = normalize(mWorld * vec4(n.xyz, 1.0));
-        // normal = vec4(n.xyz, 0.0);
 
         uv = aUV;
     }
