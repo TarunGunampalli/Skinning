@@ -70,7 +70,6 @@ export const sceneVSText = `
     uniform vec4 jRots[64];
 
     vec4 multQuat(vec3 vt, vec4 qr) {
-        qr = normalize(qr);
         vec4 qt = vec4(vt.xyz, 0);
         vec3 vr = vec3(qr.xyz);
         float w = qt.w * qr.w - dot(vt, vr);
