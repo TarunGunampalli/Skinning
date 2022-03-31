@@ -76,26 +76,31 @@ export const sceneVSText = `
     // }
 
     vec4 multQuat(vec3 vt, vec4 qr) {
+        qr = normalize(qr);
         vec4 qt = vec4(vt.xyz, 0);
         vec3 vr = vec3(qr.xyz);
         float w = qt.w * qr.w - dot(vt, vr);
         vec3 v = qt.w * vr + qr.w * vt + cross(vt, vr);
         vec4 q = vec4(v.xyz, w);
-        return normalize(q);
+        return q;
     }
 
     void main () {
-        vec4 qd = skinWeights.x * 0.5 * (multQuat(jTrans[int(skinIndices.x)], jRots[int(skinIndices.x)]));
-        qd += skinWeights.y * 0.5 * (multQuat(jTrans[int(skinIndices.y)], jRots[int(skinIndices.y)]));
-        qd += skinWeights.z * 0.5 * (multQuat(jTrans[int(skinIndices.z)], jRots[int(skinIndices.z)]));
-        qd += skinWeights.w * 0.5 * (multQuat(jTrans[int(skinIndices.w)], jRots[int(skinIndices.w)]));
-        qd = normalize(qd);
+        vec4 qdx = 0.5 * multQuat(jTrans[int(skinIndices.x)], jRots[int(skinIndices.x)]);
+        vec4 qdy = 0.5 * multQuat(jTrans[int(skinIndices.y)], jRots[int(skinIndices.y)]);
+        vec4 qdz = 0.5 * multQuat(jTrans[int(skinIndices.z)], jRots[int(skinIndices.z)]);
+        vec4 qdw = 0.5 * multQuat(jTrans[int(skinIndices.w)], jRots[int(skinIndices.w)]);
+        vec4 qd = skinWeights.x * qdx + skinWeights.y * qdy + skinWeights.z * qdz + skinWeights.w * qdw;
+        qd /= skinWeights.x * length(qdx) + skinWeights.y * length(qdy) + skinWeights.z * length(qdz) + skinWeights.w * length(qdw);
 
-        vec4 qr = skinWeights.x * jRots[int(skinIndices.x)];
-        qr += skinWeights.y * jRots[int(skinIndices.y)];
-        qr += skinWeights.z * jRots[int(skinIndices.z)];
-        qr += skinWeights.w * jRots[int(skinIndices.w)];
-        qr = normalize(qr);
+
+        vec4 qrx = jRots[int(skinIndices.x)];
+        vec4 qry = jRots[int(skinIndices.y)];
+        vec4 qrz = jRots[int(skinIndices.z)];
+        vec4 qrw = jRots[int(skinIndices.w)];
+        vec4 qr = skinWeights.x * qrx + skinWeights.y * qry + skinWeights.z * qrz + skinWeights.w * qrw;
+        // qr /= length(qd);
+        qr /= skinWeights.x * length(qrx) + skinWeights.y * length(qry) + skinWeights.z * length(qrz) + skinWeights.w * length(qrw);
 
         vec3 r = vec3(qr.xyz);
         vec3 t = vec3(qd.xyz);
@@ -103,18 +108,20 @@ export const sceneVSText = `
         vec3 v = vertPosition;
         v = v + 2.0 * cross(r, cross(r, v) + qr.w * v) + 2.0 * (qr.w * t - qd.w * r + cross(r, t));
         vec3 n = vec3(normal.xyz);
+        // vec3 n = vec3((mWorld * normal).xyz);
         n = n + 2.0 * cross(r, cross(r, n) + qr.w * n);
 
         // vec4 worldPosition = mWorld * vec4(trans, 1.0);
-        vec4 worldPosition = mWorld * vec4(v.xyz, 1);
+        vec4 worldPosition = mWorld * vec4(v.xyz, 1.0);
         gl_Position = mProj * mView * worldPosition;
         
         //  Compute light direction and transform to camera coordinates
         lightDir = lightPosition - worldPosition;
         
-        vec4 aNorm4 = vec4(aNorm, 0.0);
+        // vec4 aNorm4 = vec4(aNorm, 0.0);
         // normal = normalize(mWorld * vec4(aNorm, 0.0));
-        normal = normalize(mWorld * vec4(n.xyz, 1));
+        normal = normalize(mWorld * vec4(n.xyz, 0.0));
+        // normal = vec4(n.xyz, 0.0);
 
         uv = aUV;
     }
