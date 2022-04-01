@@ -337,22 +337,6 @@ export class GUI implements IGUI {
 		return { intersect: true, t0: -b - t, t1: -b + t };
 	}
 
-	private getBoneRotation(bone: Bone, inverse: boolean, o?: Vec3): Mat3 {
-		if (!o) o = new Vec3([0, 1, 0]);
-		o.normalize();
-		const b = Vec3.difference(bone.endpoint, bone.position).normalize();
-		const cos = Vec3.dot(b, o);
-		if (Math.abs(cos) == 1) return new Mat3([1, 0, 0, 0, cos, 0, 0, 0, 1]);
-		const sin = Vec3.cross(b, o).length();
-		const G = new Mat3([cos, inverse ? -sin : sin, 0, inverse ? sin : -sin, cos, 0, 0, 0, 1]);
-		const u = b.copy();
-		const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
-		const w = Vec3.cross(o, b);
-		const FInv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]);
-		const F = FInv.inverse(new Mat3());
-		return FInv.multiply(G.multiply(F));
-	}
-
 	private getBoneMatrices(bone: Bone): [Mat4, Quat, Mat4] {
 		const b = Vec3.difference(bone.endpoint, bone.position);
 		const scale = new Mat4([GUI.boneRadius, 0, 0, 0, 0, b.length(), 0, 0, 0, 0, GUI.boneRadius, 0, 0, 0, 0, 1]);
