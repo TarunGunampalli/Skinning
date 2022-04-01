@@ -181,7 +181,7 @@ export class SkinningAnimation extends CanvasAnimation {
             gl.uniformMatrix4fv(loc, false, new Float32Array(scale.all()));
         });
         this.cylinderRenderPass.addUniform("uRot", (gl, loc) => {
-            gl.uniformMatrix4fv(loc, false, new Float32Array(rot.all()));
+            gl.uniform4fv(loc, new Float32Array(rot.xyzw));
         });
         this.cylinderRenderPass.addUniform("uTrans", (gl, loc) => {
             gl.uniformMatrix4fv(loc, false, new Float32Array(trans.all()));
