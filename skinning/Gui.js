@@ -127,11 +127,11 @@ export class GUI {
                         b.normalize();
                         const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
                         const newB = Vec3.difference(end, bone.position).normalize();
-                        const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-                        const w = Vec3.dot(initialB, newB);
-                        const [x, y, z] = Vec3.cross(initialB, newB).xyz;
+                        // const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+                        const w = Vec3.dot(b, newB);
+                        const [x, y, z] = Vec3.cross(b, newB).xyz;
                         const rotQuat = new Quat([x, y, z, w + 1]);
-                        bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
+                        // bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
                         this.rotateBone(bone, bones, rotQuat);
                     }
                     else {
@@ -161,16 +161,21 @@ export class GUI {
             this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
         }
     }
-    rotateBone(bone, bones, rotQuat) {
-        bone.rotation = rotQuat.copy().normalize();
-        const b = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-        b.multiplyByQuat(bone.rotation);
+    rotateBone(bone, bones, rotQuat, newPos) {
+        if (!newPos)
+            newPos = bone.position;
+        const b = Vec3.difference(bone.endpoint, bone.position);
+        const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+        const l = initialB.length();
+        const r = rotQuat.copy().normalize();
+        b.multiplyByQuat(r).normalize().scale(l);
+        bone.position = newPos;
         bone.endpoint = Vec3.sum(bone.position, b);
+        bone.rotation = this.getRotQuat(bone, true, initialB);
         bone.children.forEach((c) => {
             const child = bones[c];
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
-            child.position = Vec3.sum(bone.endpoint, offset);
-            this.rotateBone(child, bones, rotQuat);
+            this.rotateBone(child, bones, rotQuat, Vec3.sum(bone.endpoint, offset));
         });
     }
     rotateCamera(mouseDir) {
