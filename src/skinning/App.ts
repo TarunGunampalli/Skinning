@@ -4,6 +4,7 @@ import { Floor } from "../lib/webglutils/Floor.js";
 import { GUI, Mode } from "./Gui.js";
 import {
 	sceneFSText,
+	sceneFSTextureText,
 	sceneVSText,
 	floorFSText,
 	floorVSText,
@@ -272,9 +273,9 @@ export class SkinningAnimation extends CanvasAnimation {
 		this.sceneRenderPass.addUniform("jRots", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniform4fv(loc, this.scene.meshes[0].getBoneRotations());
 		});
-
-		this.sceneRenderPass.addTextureMap(this.scene.meshes[0].imgSrc);
-
+		if (this.scene.meshes[0].imgSrc) {
+			this.sceneRenderPass.addTextureMap(this.scene.meshes[0].imgSrc, sceneVSText, sceneFSTextureText);
+		}
 		this.sceneRenderPass.setDrawData(this.ctx.TRIANGLES, this.scene.meshes[0].geometry.position.count, this.ctx.UNSIGNED_INT, 0);
 		this.sceneRenderPass.setup();
 	}

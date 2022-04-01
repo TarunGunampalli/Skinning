@@ -119,8 +119,22 @@ export const sceneFSText = `
     varying vec2 uv;
     varying vec4 normal;
 
+
     void main () {
         gl_FragColor = vec4((normal.x + 1.0)/2.0, (normal.y + 1.0)/2.0, (normal.z + 1.0)/2.0,1.0);
+    }
+`;
+export const sceneFSTextureText = `
+    precision mediump float;
+
+    varying vec4 lightDir;
+    varying vec2 uv;
+    varying vec4 normal;
+
+    uniform sampler2D tex;
+
+    void main () {
+        gl_FragColor = texture2D(tex, uv);
     }
 `;
 export const skeletonVSText = `
