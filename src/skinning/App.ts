@@ -14,7 +14,7 @@ import {
 	cylinderVSText,
 	cylinderFSText,
 } from "./Shaders.js";
-import { Mat4, Vec4, Vec3 } from "../lib/TSM.js";
+import { Mat4, Vec4, Vec3, Quat } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 import { Camera } from "../lib/webglutils/Camera.js";
@@ -359,7 +359,7 @@ export class SkinningAnimation extends CanvasAnimation {
 	/**
 	 * Sets up the cylinder drawing
 	 */
-	public initCylinder(scale: Mat4, rot: Mat4, trans: Mat4): void {
+	public initCylinder(scale: Mat4, rot: Quat, trans: Mat4): void {
 		this.cylinderRenderPass.addUniform("uProj", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.projMatrix().all()));
 		});
@@ -370,7 +370,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(scale.all()));
 		});
 		this.cylinderRenderPass.addUniform("uRot", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
-			gl.uniformMatrix4fv(loc, false, new Float32Array(rot.all()));
+			gl.uniform4fv(loc, new Float32Array(rot.xyzw));
 		});
 		this.cylinderRenderPass.addUniform("uTrans", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(trans.all()));

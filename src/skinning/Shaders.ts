@@ -195,11 +195,17 @@ export const cylinderVSText = `
     uniform mat4 uProj;
     
     uniform mat4 uScale;
-    uniform mat4 uRot;
+    uniform vec4 uRot;
     uniform mat4 uTrans;
 
+    vec3 qtrans(vec4 q, vec3 v) {
+        return v + 2.0 * cross(cross(v, q.xyz) - q.w*v, q.xyz);
+    }
+
     void main() {
-        gl_Position = uProj * uView * uTrans * uRot * uScale * vec4(cos(aVertPos.x), aVertPos.y, sin(aVertPos.x), 1.0);
+        vec4 scaled = uScale * vec4(cos(aVertPos.x), aVertPos.y, sin(aVertPos.x), 1.0);
+        vec3 rotated = qtrans(uRot, vec3(scaled.xyz));
+        gl_Position = uProj * uView * uTrans * vec4(rotated.xyz, 1.0);
     }
 `;
 

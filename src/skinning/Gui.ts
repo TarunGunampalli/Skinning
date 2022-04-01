@@ -300,9 +300,9 @@ export class GUI implements IGUI {
 	}
 
 	private boneIntersect(bone: Bone, ray: Ray): Intersection {
-		const rotMat = this.getBoneRotation(bone, false);
-		const p = Vec3.difference(ray.pos, bone.position).multiplyMat3(rotMat);
-		const d = ray.dir.multiplyMat3(rotMat, new Vec3()).normalize();
+		const rotQuat = this.getRotQuat(bone, false);
+		const p = Vec3.difference(ray.pos, bone.position).multiplyByQuat(rotQuat);
+		const d = ray.dir.multiplyByQuat(rotQuat, new Vec3()).normalize();
 
 		const O = new Vec2([p.x, p.z]);
 		const D = new Vec2([d.x, d.z]);
@@ -349,12 +349,22 @@ export class GUI implements IGUI {
 		return FInv.multiply(G.multiply(F));
 	}
 
-	private getBoneMatrices(bone: Bone): [Mat4, Mat4, Mat4] {
+	private getBoneMatrices(bone: Bone): [Mat4, Quat, Mat4] {
 		const b = Vec3.difference(bone.endpoint, bone.position);
 		const scale = new Mat4([GUI.boneRadius, 0, 0, 0, 0, b.length(), 0, 0, 0, 0, GUI.boneRadius, 0, 0, 0, 0, 1]);
-		const rot = this.getBoneRotation(bone, true).toMat4();
+		const rot = this.getRotQuat(bone, true);
 		const trans = new Mat4([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, ...bone.position.xyz, 1]);
 		return [scale, rot, trans];
+	}
+
+	private getRotQuat(bone: Bone, inverse: Boolean, o?: Vec3): Quat {
+		if (!o) o = new Vec3([0, 1, 0]);
+		o.normalize();
+		const b = Vec3.difference(bone.endpoint, bone.position).normalize();
+		const w = Vec3.dot(b, o);
+		const [x, y, z] = inverse ? Vec3.cross(o, b).xyz : Vec3.cross(b, o).xyz;
+		const rotQuat = new Quat([x, y, z, w + 1]);
+		return rotQuat.normalize();
 	}
 
 	public getModeString(): string {
