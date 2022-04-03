@@ -1,5 +1,5 @@
 import { Camera } from "../lib/webglutils/Camera.js";
-import { Mat4, Vec3, Vec4, Vec2, Quat, Mat3 } from "../lib/TSM.js";
+import { Mat4, Vec3, Vec4, Vec2, Quat } from "../lib/TSM.js";
 export var Mode;
 (function (Mode) {
     Mode[Mode["playback"] = 0] = "playback";
@@ -255,23 +255,6 @@ export class GUI {
         const t = Math.sqrt(b * b - c);
         return { intersect: true, t0: -b - t, t1: -b + t };
     }
-    getBoneRotation(bone, inverse, o) {
-        if (!o)
-            o = new Vec3([0, 1, 0]);
-        o.normalize();
-        const b = Vec3.difference(bone.endpoint, bone.position).normalize();
-        const cos = Vec3.dot(b, o);
-        if (Math.abs(cos) == 1)
-            return new Mat3([1, 0, 0, 0, cos, 0, 0, 0, 1]);
-        const sin = Vec3.cross(b, o).length();
-        const G = new Mat3([cos, inverse ? -sin : sin, 0, inverse ? sin : -sin, cos, 0, 0, 0, 1]);
-        const u = b.copy();
-        const v = Vec3.difference(o, b.scale(cos, new Vec3())).normalize();
-        const w = Vec3.cross(o, b);
-        const FInv = new Mat3([...u.xyz, ...v.xyz, ...w.xyz]);
-        const F = FInv.inverse(new Mat3());
-        return FInv.multiply(G.multiply(F));
-    }
     getBoneMatrices(bone) {
         const b = Vec3.difference(bone.endpoint, bone.position);
         const scale = new Mat4([GUI.boneRadius, 0, 0, 0, 0, b.length(), 0, 0, 0, 0, GUI.boneRadius, 0, 0, 0, 0, 1]);
@@ -369,7 +352,7 @@ export class GUI {
                 if (this.intersectedBone.bone) {
                     const bone = this.intersectedBone.bone;
                     const rotAxis = Vec3.difference(bone.endpoint, bone.position);
-                    const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed).multiply(bone.rotation);
+                    const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
                     this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
                     this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
                 }
@@ -382,7 +365,7 @@ export class GUI {
                 if (this.intersectedBone.bone) {
                     const bone = this.intersectedBone.bone;
                     const rotAxis = Vec3.difference(bone.endpoint, bone.position);
-                    const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed).multiply(bone.rotation);
+                    const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
                     this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
                     this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
                 }
