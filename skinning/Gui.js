@@ -127,11 +127,9 @@ export class GUI {
                         b.normalize();
                         const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
                         const newB = Vec3.difference(end, bone.position).normalize();
-                        // const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
                         const w = Vec3.dot(b, newB);
                         const [x, y, z] = Vec3.cross(b, newB).xyz;
                         const rotQuat = new Quat([x, y, z, w + 1]);
-                        // bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
                         this.rotateBone(bone, bones, rotQuat, bone.position, false);
                     }
                     else {
