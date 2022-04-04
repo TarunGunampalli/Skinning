@@ -245,16 +245,14 @@ export class GUI implements IGUI {
 	}
 
 	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat, newPos: Vec3, roll: boolean) {
-		if (!newPos) newPos = bone.position;
-		const b = Vec3.difference(bone.endpoint, bone.position);
+		rotQuat.normalize();
+		const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat);
 		const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 		const l = initialB.length();
-		const r = rotQuat.copy().normalize();
-		b.multiplyByQuat(r).normalize().scale(l);
-		bone.position = newPos;
+		if (newPos) bone.position = newPos;
 		if (roll) {
-			bone.roll.multiply(r);
-			bone.rotation.multiply(r);
+			bone.roll.multiply(rotQuat);
+			bone.rotation.multiply(rotQuat);
 			bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
 		} else {
 			bone.endpoint = Vec3.sum(bone.position, b);
