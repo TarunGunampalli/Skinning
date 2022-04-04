@@ -213,7 +213,8 @@ export class GUI implements IGUI {
 						const sign = Math.sign(Vec3.dot(rotDir, boneRight));
 						const rotQuat = Quat.fromAxisAngle(this.camera.forward(), sign * s * 0.2 * GUI.rotationSpeed);
 
-						this.rotateBone(bone, bones, rotQuat);
+						// bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
+						this.rotateBone(bone, bones, rotQuat, bone.position, false);
 					} else {
 						this.rotateCamera(mouseDir);
 					}
@@ -243,17 +244,26 @@ export class GUI implements IGUI {
 		}
 	}
 
-	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat, newPos?: Vec3) {
+	private rotateBone(bone: Bone, bones: Bone[], rotQuat: Quat, newPos: Vec3, roll: boolean) {
 		rotQuat.normalize();
+		const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat);
 		const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+		const l = initialB.length();
 		if (newPos) bone.position = newPos;
-		bone.rotation.multiply(rotQuat);
-		bone.endpoint = Vec3.sum(initialB.multiplyByQuat(bone.rotation), bone.position);
+		if (roll) {
+			bone.roll.multiply(rotQuat);
+			bone.rotation.multiply(rotQuat);
+			bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
+		} else {
+			bone.endpoint = Vec3.sum(bone.position, b);
+			bone.rotation = this.getRotQuat(bone, true, initialB);
+			bone.rotation.multiply(bone.roll);
+		}
 
 		bone.children.forEach((c) => {
 			const child = bones[c];
 			const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
-			this.rotateBone(child, bones, rotQuat, Vec3.sum(bone.endpoint, offset));
+			this.rotateBone(child, bones, rotQuat, Vec3.sum(bone.endpoint, offset), roll);
 		});
 	}
 
@@ -434,7 +444,7 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
-					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
+					this.rotateBone(bone, this.intersectedBone.bones, rotQuat, bone.position, true);
 					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
 				} else {
 					this.camera.roll(GUI.rollSpeed, false);
@@ -446,7 +456,7 @@ export class GUI implements IGUI {
 					const bone = this.intersectedBone.bone;
 					const rotAxis = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
-					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
+					this.rotateBone(bone, this.intersectedBone.bones, rotQuat, bone.position, true);
 					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
 				} else {
 					this.camera.roll(GUI.rollSpeed, true);
