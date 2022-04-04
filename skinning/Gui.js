@@ -164,14 +164,16 @@ export class GUI {
     rotateBone(bone, bones, rotQuat, newPos) {
         if (!newPos)
             newPos = bone.position;
-        const b = Vec3.difference(bone.endpoint, bone.position);
+        rotQuat.normalize();
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-        const l = initialB.length();
-        const r = rotQuat.copy().normalize();
-        b.multiplyByQuat(r).normalize().scale(l);
+        // const l = initialB.length();
+        // b.multiplyByQuat(rotQuat).normalize().scale(l);
         bone.position = newPos;
-        bone.endpoint = Vec3.sum(bone.position, b);
-        bone.rotation = this.getRotQuat(bone, true, initialB);
+        // const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat);
+        // bone.endpoint = Vec3.sum(bone.position, b);
+        // bone.rotation = this.getRotQuat(bone, true, initialB);
+        bone.rotation.multiply(rotQuat);
+        bone.endpoint = Vec3.sum(initialB.multiplyByQuat(bone.rotation), bone.position);
         bone.children.forEach((c) => {
             const child = bones[c];
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
