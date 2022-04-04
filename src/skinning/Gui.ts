@@ -432,7 +432,7 @@ export class GUI implements IGUI {
 			case "ArrowLeft": {
 				if (this.intersectedBone.bone) {
 					const bone = this.intersectedBone.bone;
-					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
+					const rotAxis = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
 					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
 					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
@@ -444,7 +444,7 @@ export class GUI implements IGUI {
 			case "ArrowRight": {
 				if (this.intersectedBone.bone) {
 					const bone = this.intersectedBone.bone;
-					const rotAxis = Vec3.difference(bone.endpoint, bone.position);
+					const rotAxis = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 					const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
 					this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
 					this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
