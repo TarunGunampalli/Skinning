@@ -1,3 +1,4 @@
+import { Quat } from "../lib/TSM.js";
 export class Attribute {
     constructor(attr) {
         this.values = attr.values;
@@ -27,6 +28,7 @@ export class Bone {
         this.position = bone.position.copy();
         this.endpoint = bone.endpoint.copy();
         this.rotation = bone.rotation.copy();
+        this.roll = Quat.identity;
         this.offset = bone.offset;
         this.initialPosition = bone.initialPosition.copy();
         this.initialEndpoint = bone.initialEndpoint.copy();
@@ -39,7 +41,7 @@ export class Mesh {
         this.worldMatrix = mesh.worldMatrix.copy();
         this.rotation = mesh.rotation.copy();
         this.bones = [];
-        mesh.bones.forEach(bone => {
+        mesh.bones.forEach((bone) => {
             this.bones.push(new Bone(bone));
         });
         this.materialName = mesh.materialName;
