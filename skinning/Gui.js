@@ -131,7 +131,6 @@ export class GUI {
                         const s = rotDir.length();
                         const sign = Math.sign(Vec3.dot(rotDir, boneRight));
                         const rotQuat = Quat.fromAxisAngle(this.camera.forward(), sign * s * 0.2 * GUI.rotationSpeed);
-                        // bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
                         this.rotateBone(bone, bones, rotQuat);
                     }
                     else {
@@ -217,8 +216,8 @@ export class GUI {
         const p = Vec3.difference(ray.pos, bone.position).multiplyByQuat(rotQuat);
         const d = ray.dir.multiplyByQuat(rotQuat, new Vec3()).normalize();
         const O = new Vec2([p.x, p.z]);
-        const D = new Vec2([d.x, d.z]);
-        const circleIntersect = this.circleIntersect(O, D.normalize());
+        const D = new Vec2([d.x, d.z]).normalize();
+        const circleIntersect = this.circleIntersect(O, D);
         if (!circleIntersect.intersect)
             return { intersect: false };
         let { t0, t1 } = circleIntersect;
@@ -347,7 +346,7 @@ export class GUI {
             case "ArrowLeft": {
                 if (this.intersectedBone.bone) {
                     const bone = this.intersectedBone.bone;
-                    const rotAxis = Vec3.difference(bone.endpoint, bone.position);
+                    const rotAxis = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
                     const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
                     this.rotateBone(bone, this.intersectedBone.bones, rotQuat);
                     this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
