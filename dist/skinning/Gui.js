@@ -125,11 +125,13 @@ export class GUI {
                         // rotate bone
                         const b = Vec3.difference(bone.endpoint, bone.position);
                         b.normalize();
-                        const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
-                        const newB = Vec3.difference(end, bone.position).normalize();
-                        const w = Vec3.dot(b, newB);
-                        const [x, y, z] = Vec3.cross(b, newB).xyz;
-                        const rotQuat = new Quat([x, y, z, w + 1]);
+                        mouseDir.scale(mouseLength);
+                        const boneRight = Vec3.cross(b, this.camera.forward());
+                        const rotDir = boneRight.scale(Vec3.dot(mouseDir, boneRight), new Vec3());
+                        const s = rotDir.length();
+                        const sign = Math.sign(Vec3.dot(rotDir, boneRight));
+                        const rotQuat = Quat.fromAxisAngle(this.camera.forward(), sign * s * 0.2 * GUI.rotationSpeed);
+                        // bone.endpoint = Vec3.sum(bone.position, newB.scale(l, new Vec3()));
                         this.rotateBone(bone, bones, rotQuat, bone.position, false);
                     }
                     else {
@@ -160,17 +162,15 @@ export class GUI {
         }
     }
     rotateBone(bone, bones, rotQuat, newPos, roll) {
-        if (!newPos)
-            newPos = bone.position;
-        const b = Vec3.difference(bone.endpoint, bone.position);
+        rotQuat.normalize();
+        const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat);
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
         const l = initialB.length();
-        const r = rotQuat.copy().normalize();
-        b.multiplyByQuat(r).normalize().scale(l);
-        bone.position = newPos;
+        if (newPos)
+            bone.position = newPos;
         if (roll) {
-            bone.roll.multiply(r);
-            bone.rotation.multiply(r);
+            bone.roll.multiply(rotQuat);
+            bone.rotation.multiply(rotQuat);
             bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
         }
         else {
