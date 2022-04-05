@@ -45,8 +45,6 @@ export class Bone {
 	public position: Vec3; // current position of the bone's joint *in world coordinates*. Used by the provided skeleton shader, so you need to keep this up to date.
 	public endpoint: Vec3; // current position of the bone's second (non-joint) endpoint, in world coordinates
 	public rotation: Quat; // current orientation of the joint *with respect to world coordinates*
-	public rotate: Quat;
-	public roll: Quat;
 	public theta: number;
 
 	public initialPosition: Vec3; // position of the bone's joint *in world coordinates*
@@ -61,8 +59,6 @@ export class Bone {
 		this.position = bone.position.copy();
 		this.endpoint = bone.endpoint.copy();
 		this.rotation = bone.rotation.copy();
-		this.rotate = Quat.identity;
-		this.roll = Quat.identity;
 		this.theta = 0;
 		this.offset = bone.offset;
 		this.initialPosition = bone.initialPosition.copy();
