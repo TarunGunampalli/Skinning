@@ -28,7 +28,8 @@ export class Bone {
         this.position = bone.position.copy();
         this.endpoint = bone.endpoint.copy();
         this.rotation = bone.rotation.copy();
-        this.roll = Quat.identity;
+        this.rotate = Quat.identity;
+        this.theta = 0;
         this.offset = bone.offset;
         this.initialPosition = bone.initialPosition.copy();
         this.initialEndpoint = bone.initialEndpoint.copy();
