@@ -162,11 +162,13 @@ export class GUI {
     }
     rotateBone(bone, bones, rotQuat, newPos, roll) {
         rotQuat.normalize();
+        // console.log(rotQuat.xyzw);
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
         const l = initialB.length();
+        initialB.normalize();
         if (roll) {
             bone.theta += roll;
-            bone.rotation.multiply(rotQuat);
+            bone.rotation = Quat.product(rotQuat, bone.rotation);
             // bone.rotation = this.getRotQuat(bone, true, initialB);
             // const rollQuat = Quat.fromAxisAngle(initialB, bone.theta).normalize();
             // bone.rotation.multiply(rollQuat);
@@ -174,8 +176,7 @@ export class GUI {
             bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation).normalize().scale(l));
         }
         else {
-            const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat);
-            b.normalize().scale(l);
+            const b = Vec3.difference(bone.endpoint, bone.position).multiplyByQuat(rotQuat).normalize().scale(l);
             bone.position = newPos;
             bone.endpoint = Vec3.sum(bone.position, b);
             const roll = Quat.fromAxisAngle(initialB, bone.theta);
@@ -184,7 +185,9 @@ export class GUI {
         bone.children.forEach((c) => {
             const child = bones[c];
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
-            offset.multiplyByQuat(bone.rotation);
+            const o = offset.length();
+            console.log(o);
+            offset.multiplyByQuat(bone.rotation).normalize().scale(o);
             this.rotateBone(child, bones, rotQuat, Vec3.sum(bone.endpoint, offset), roll);
         });
     }
@@ -361,7 +364,7 @@ export class GUI {
             case "ArrowLeft": {
                 if (this.intersectedBone.bone) {
                     const bone = this.intersectedBone.bone;
-                    const rotAxis = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+                    const rotAxis = Vec3.difference(bone.endpoint, bone.position);
                     const rotQuat = Quat.fromAxisAngle(rotAxis, -GUI.rollSpeed);
                     this.rotateBone(bone, this.intersectedBone.bones, rotQuat, bone.position, -GUI.rollSpeed);
                     this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
@@ -374,7 +377,7 @@ export class GUI {
             case "ArrowRight": {
                 if (this.intersectedBone.bone) {
                     const bone = this.intersectedBone.bone;
-                    const rotAxis = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+                    const rotAxis = Vec3.difference(bone.endpoint, bone.initialPosition);
                     const rotQuat = Quat.fromAxisAngle(rotAxis, GUI.rollSpeed);
                     this.rotateBone(bone, this.intersectedBone.bones, rotQuat, bone.position, GUI.rollSpeed);
                     this.animation.initCylinder(...this.getBoneMatrices(this.intersectedBone.bone));
