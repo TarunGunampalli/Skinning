@@ -132,7 +132,6 @@ export class SkinningAnimation extends CanvasAnimation {
 		}
 		this.initModel();
 		this.initSkeleton();
-		// this.initCylinder();
 		this.gui.reset();
 	}
 
