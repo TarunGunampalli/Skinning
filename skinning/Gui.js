@@ -115,7 +115,6 @@ export class GUI {
             const mouseDir = this.camera.right();
             mouseDir.scale(-dx);
             mouseDir.add(this.camera.up().scale(dy));
-            const mouseLength = mouseDir.length();
             mouseDir.normalize();
             if (dx === 0 && dy === 0) {
                 return;
