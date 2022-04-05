@@ -1,4 +1,3 @@
-import { Quat } from "../lib/TSM.js";
 export class Attribute {
     constructor(attr) {
         this.values = attr.values;
@@ -28,8 +27,6 @@ export class Bone {
         this.position = bone.position.copy();
         this.endpoint = bone.endpoint.copy();
         this.rotation = bone.rotation.copy();
-        this.rotate = Quat.identity;
-        this.roll = Quat.identity;
         this.theta = 0;
         this.offset = bone.offset;
         this.initialPosition = bone.initialPosition.copy();
