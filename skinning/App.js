@@ -55,6 +55,12 @@ export class SkinningAnimation extends CanvasAnimation {
         this.sBackRenderPass.setup();
         this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
         this.cylinderRenderPass.addAttribute("aVertPos", 4, this.ctx.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, this.cylinder.positionsFlat());
+        this.cylinderRenderPass.addUniform("uProj", (gl, loc) => {
+            gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.projMatrix().all()));
+        });
+        this.cylinderRenderPass.addUniform("uView", (gl, loc) => {
+            gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.viewMatrix().all()));
+        });
         this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
     }
     initScene() {
@@ -172,12 +178,6 @@ export class SkinningAnimation extends CanvasAnimation {
      * Sets up the cylinder drawing
      */
     initCylinder(scale, rot, trans) {
-        this.cylinderRenderPass.addUniform("uProj", (gl, loc) => {
-            gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.projMatrix().all()));
-        });
-        this.cylinderRenderPass.addUniform("uView", (gl, loc) => {
-            gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.viewMatrix().all()));
-        });
         this.cylinderRenderPass.addUniform("uScale", (gl, loc) => {
             gl.uniformMatrix4fv(loc, false, new Float32Array(scale.all()));
         });
