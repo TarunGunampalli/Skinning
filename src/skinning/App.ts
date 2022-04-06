@@ -129,7 +129,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		this.cylinderRenderPass.addUniform("uView", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 			gl.uniformMatrix4fv(loc, false, new Float32Array(this.gui.viewMatrix().all()));
 		});
-		this.cylinderRenderPass.setDrawData(this.ctx.TRIANGLES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
+		this.cylinderRenderPass.setDrawData(this.ctx.LINES, this.cylinder.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 	}
 
 	public initScene(): void {

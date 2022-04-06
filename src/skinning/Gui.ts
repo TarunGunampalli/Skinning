@@ -49,7 +49,7 @@ export class GUI implements IGUI {
 	private static readonly zoomSpeed: number = 0.1;
 	private static readonly rollSpeed: number = 0.1;
 	private static readonly panSpeed: number = 0.1;
-	private static boneRadius = 0.05;
+	private static boneRadius = 0.07;
 
 	private camera: Camera;
 	private dragging: boolean;
@@ -325,7 +325,7 @@ export class GUI implements IGUI {
 	private circleIntersect(O: Vec2, D: Vec2): Intersection {
 		const b = Vec2.dot(O, D);
 		if (b > 0) return { intersect: false };
-		const c = O.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
+		const c = O.squaredLength() - GUI.boneRadius * GUI.boneRadius;
 		if (c > b * b) return { intersect: false };
 		const t = Math.sqrt(b * b - c);
 		return { intersect: true, t0: -b - t, t1: -b + t };
