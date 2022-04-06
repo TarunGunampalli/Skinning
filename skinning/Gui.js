@@ -242,7 +242,7 @@ export class GUI {
         const b = Vec2.dot(O, D);
         if (b > 0)
             return { intersect: false };
-        const c = O.squaredLength() - 2 * GUI.boneRadius * GUI.boneRadius;
+        const c = O.squaredLength() - GUI.boneRadius * GUI.boneRadius;
         if (c > b * b)
             return { intersect: false };
         const t = Math.sqrt(b * b - c);
@@ -421,5 +421,5 @@ GUI.rotationSpeed = 0.05;
 GUI.zoomSpeed = 0.1;
 GUI.rollSpeed = 0.1;
 GUI.panSpeed = 0.1;
-GUI.boneRadius = 0.05;
+GUI.boneRadius = 0.07;
 //# sourceMappingURL=Gui.js.map
