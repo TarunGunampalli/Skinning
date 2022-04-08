@@ -205,8 +205,13 @@ export class GUI implements IGUI {
 					const { bone, t } = this.intersectedBone;
 					if (this.clicked) {
 						// rotate bone
+						const lookDir = this.camera.forward().copy().normalize();
+						const vBone = Vec3.difference(bone.endpoint, bone.position);
 						const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
 						const b = Vec3.difference(end, bone.position).normalize();
+						b.subtract(lookDir.scale(Vec3.dot(lookDir, b), new Vec3()));
+						b.normalize().scale(Vec3.cross(lookDir, vBone).length());
+						b.add(lookDir.scale(Vec3.dot(lookDir, vBone)));
 						const rotQuat = this.getRotQuat(bone, false, b);
 						this.rotateBone(bone, rotQuat);
 					} else {
