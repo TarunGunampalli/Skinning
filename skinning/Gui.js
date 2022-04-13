@@ -31,7 +31,7 @@ export class GUI {
     getNumKeyFrames() {
         // TODO
         // Used in the status bar in the GUI
-        return 0;
+        return this.keyFrames.length;
     }
     getTime() {
         return this.time;
@@ -39,7 +39,7 @@ export class GUI {
     getMaxTime() {
         // TODO
         // The animation should stop after the last keyframe
-        return 0;
+        return this.keyFrames.length - 1;
     }
     /**
      * Resets the state of the GUI
@@ -51,6 +51,7 @@ export class GUI {
         this.mode = Mode.edit;
         this.intersectedBone = { bone: undefined, t: -1 };
         this.clicked = false;
+        this.keyFrames = [];
         this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.width / this.viewPortHeight, 0.1, 1000.0);
     }
     /**
@@ -285,6 +286,23 @@ export class GUI {
         // Maybe your bone highlight/dragging logic needs to do stuff here too
         this.clicked = false;
     }
+    setSkeleton(index, t) {
+        const frame = Math.floor(t);
+        t -= frame;
+        const bone = this.bones[index];
+        const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
+        const l = initialB.length();
+        bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], t);
+        bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation).normalize().scale(l));
+        bone.children.forEach((c) => {
+            const child = this.bones[c];
+            const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
+            const o = offset.length();
+            offset.multiplyByQuat(bone.rotation).normalize().scale(o);
+            child.position = Vec3.sum(bone.endpoint, offset);
+            this.setSkeleton(c, t);
+        });
+    }
     /**
      * Callback function for a key press event
      * @param key
@@ -381,6 +399,8 @@ export class GUI {
                 if (this.mode === Mode.edit) {
                     // TODO
                     // Add keyframe
+                    const frame = this.bones.map((bone) => bone.rotation);
+                    this.keyFrames.push(frame);
                 }
                 break;
             }

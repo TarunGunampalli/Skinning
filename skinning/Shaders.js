@@ -117,7 +117,7 @@ export const sceneVSText = `
 
         uv = aUV;
     }
-
+    
 `;
 export const sceneFSText = `
     precision mediump float;
