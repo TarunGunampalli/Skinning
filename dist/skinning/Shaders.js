@@ -84,20 +84,27 @@ export const sceneVSText = `
     }
 
     void main () {
-        vec4 qdx = 0.5 * multQuat(jTrans[int(skinIndices.x)], jRots[int(skinIndices.x)]);
-        vec4 qdy = 0.5 * multQuat(jTrans[int(skinIndices.y)], jRots[int(skinIndices.y)]);
-        vec4 qdz = 0.5 * multQuat(jTrans[int(skinIndices.z)], jRots[int(skinIndices.z)]);
-        vec4 qdw = 0.5 * multQuat(jTrans[int(skinIndices.w)], jRots[int(skinIndices.w)]);
+        vec4 qdx = skinWeights.x * 0.5 * multQuat(jTrans[int(skinIndices.x)], jRots[int(skinIndices.x)]);
+        vec4 qdy = skinWeights.y * 0.5 * multQuat(jTrans[int(skinIndices.y)], jRots[int(skinIndices.y)]);
+        vec4 qdz = skinWeights.z * 0.5 * multQuat(jTrans[int(skinIndices.z)], jRots[int(skinIndices.z)]);
+        vec4 qdw = skinWeights.w * 0.5 * multQuat(jTrans[int(skinIndices.w)], jRots[int(skinIndices.w)]);
+        vec4 qd = qdx + qdy + qdz + qdw;
+  
+        vec4 qrx = skinWeights.x * jRots[int(skinIndices.x)];
+        vec4 qry = skinWeights.y * jRots[int(skinIndices.y)];
+        vec4 qrz = skinWeights.z * jRots[int(skinIndices.z)];
+        vec4 qrw = skinWeights.w * jRots[int(skinIndices.w)];
+        vec4 qr = qrx + qry + qrz + qrw;
+        float l = length(qr);
+        qd /= l;
+        qr /= l;
 
-        vec4 qrx = jRots[int(skinIndices.x)];
-        vec4 qry = jRots[int(skinIndices.y)];
-        vec4 qrz = jRots[int(skinIndices.z)];
-        vec4 qrw = jRots[int(skinIndices.w)];
+        vec4 vPos = skinWeights.x * v0;
+        vPos += skinWeights.y * v1;
+        vPos += skinWeights.z * v2;
+        vPos += skinWeights.w * v3;
 
-        vec3 v = skinWeights.x * computeVertex(v0, qdx, qrx);
-        v += skinWeights.y * computeVertex(v1, qdy, qry);
-        v += skinWeights.z * computeVertex(v2, qdz, qrz);
-        v += skinWeights.w * computeVertex(v3, qdw, qrw);
+        vec3 v = computeVertex(vPos, qd, qr);
 
         vec4 worldPosition = mWorld * vec4(v.xyz, 1.0);
         gl_Position = mProj * mView * worldPosition;
