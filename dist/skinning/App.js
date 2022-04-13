@@ -1,7 +1,7 @@
 import { Debugger } from "../lib/webglutils/Debugging.js";
 import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { Floor } from "../lib/webglutils/Floor.js";
-import { GUI } from "./Gui.js";
+import { GUI, Mode } from "./Gui.js";
 import { sceneFSText, sceneFSTextureText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText, cylinderVSText, cylinderFSText, } from "./Shaders.js";
 import { Mat4, Vec4 } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
@@ -194,14 +194,18 @@ export class SkinningAnimation extends CanvasAnimation {
      *
      */
     draw() {
+        const GUI = this.getGUI();
         // Advance to the next time step
         let curr = new Date().getTime();
         let deltaT = curr - this.millis;
         this.millis = curr;
         deltaT /= 1000;
-        this.getGUI().incrementTime(deltaT);
+        GUI.incrementTime(deltaT);
         // TODO
         // If the mesh is animating, probably you want to do some updating of the skeleton state here
+        if (GUI.mode === Mode.playback) {
+            GUI.setSkeleton(0, GUI.getTime());
+        }
         // draw the status message
         if (this.ctx2) {
             this.ctx2.clearRect(0, 0, this.ctx2.canvas.width, this.ctx2.canvas.height);

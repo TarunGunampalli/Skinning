@@ -384,15 +384,20 @@ export class SkinningAnimation extends CanvasAnimation {
 	 *
 	 */
 	public draw(): void {
+		const GUI = this.getGUI();
+
 		// Advance to the next time step
 		let curr = new Date().getTime();
 		let deltaT = curr - this.millis;
 		this.millis = curr;
 		deltaT /= 1000;
-		this.getGUI().incrementTime(deltaT);
+		GUI.incrementTime(deltaT);
 
 		// TODO
 		// If the mesh is animating, probably you want to do some updating of the skeleton state here
+		if (GUI.mode === Mode.playback) {
+			GUI.setSkeleton(0, GUI.getTime());
+		}
 
 		// draw the status message
 		if (this.ctx2) {
