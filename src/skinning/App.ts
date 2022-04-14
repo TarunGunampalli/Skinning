@@ -396,7 +396,10 @@ export class SkinningAnimation extends CanvasAnimation {
 		// TODO
 		// If the mesh is animating, probably you want to do some updating of the skeleton state here
 		if (GUI.mode === Mode.playback) {
-			GUI.setSkeleton(0, GUI.getTime());
+			GUI.setSkeleton(
+				GUI.bones.findIndex((b) => b.parent == -1),
+				GUI.getTime()
+			);
 		}
 
 		// draw the status message
