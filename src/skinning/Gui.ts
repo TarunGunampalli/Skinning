@@ -121,6 +121,7 @@ export class GUI implements IGUI {
 		this.intersectedBone = { bone: undefined, t: -1 };
 		this.clicked = false;
 		this.keyFrames = [];
+		this.animation.cylinder.setDraw(false);
 
 		this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.width / this.viewPortHeight, 0.1, 1000.0);
 	}
