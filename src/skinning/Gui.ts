@@ -374,12 +374,12 @@ export class GUI implements IGUI {
 
 	public setSkeleton(index: number, t: number) {
 		const frame = Math.floor(t);
-		t -= frame;
+		const interp = t - frame;
 		const bone = this.bones[index];
 
 		const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 		const l = initialB.length();
-		bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], t);
+		bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], interp);
 		bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation).normalize().scale(l));
 
 		bone.children.forEach((c) => {
