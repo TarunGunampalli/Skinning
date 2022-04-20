@@ -182,16 +182,14 @@ export class GUI {
     }
     rotateBone(bone, rotQuat) {
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-        const l = initialB.length();
-        bone.rotation = Quat.product(rotQuat, bone.rotation);
+        bone.rotation = Quat.product(rotQuat, bone.rotation).normalize();
         if (bone.rotation.w < 0)
             bone.rotation = new Quat([-bone.rotation.x, -bone.rotation.y, -bone.rotation.z, -bone.rotation.w]);
-        bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation).normalize().scale(l));
+        bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
         bone.children.forEach((c) => {
             const child = this.bones[c];
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
-            const o = offset.length();
-            offset.multiplyByQuat(bone.rotation).normalize().scale(o);
+            offset.multiplyByQuat(bone.rotation);
             child.position = Vec3.sum(bone.endpoint, offset);
             this.rotateBone(child, rotQuat);
         });
@@ -289,17 +287,14 @@ export class GUI {
     }
     setSkeleton(index, t) {
         const frame = Math.floor(t);
-        const interp = t - frame;
         const bone = this.bones[index];
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-        const l = initialB.length();
-        bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], interp);
-        bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation).normalize().scale(l));
+        bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], t % 1).normalize();
+        bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
         bone.children.forEach((c) => {
             const child = this.bones[c];
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
-            const o = offset.length();
-            offset.multiplyByQuat(bone.rotation).normalize().scale(o);
+            offset.multiplyByQuat(bone.rotation);
             child.position = Vec3.sum(bone.endpoint, offset);
             this.setSkeleton(c, t);
         });
