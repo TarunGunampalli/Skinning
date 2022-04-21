@@ -237,5 +237,38 @@ export const cylinderFSText = `
     void main () {
         gl_FragColor = vec4(0.408, 0.9, 0.831, 1.0);
     }
+`;
 
+export const keyFramesVSText = `
+    precision mediump float;
+
+    attribute vec2 vertPosition;
+    uniform vec2 origin;
+    varying vec2 uv;
+    uniform float w;
+    varying float opacity;
+
+    void main() {
+        gl_Position = vec4(vertPosition, 0.0, 1.0);
+        uv = (vertPosition - origin);
+        uv.x *= 0.6;
+        uv.y *= 2.0;
+        opacity = w;
+    }
+`;
+
+export const keyFramesFSText = `
+    precision mediump float;
+
+    uniform sampler2D tex;
+    varying vec2 uv;
+    varying float opacity;
+
+    void main () {
+        gl_FragColor = texture2D(tex, uv);
+        gl_FragColor = vec4(gl_FragColor.xyz, opacity);
+        if (uv.x > 0.965 || uv.x < 0.01 || uv.y > 0.96 || uv.y < 0.015) {
+            gl_FragColor = vec4(0.95, 0.5, 0.5, 1);
+        }
+    }
 `;

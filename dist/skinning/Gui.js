@@ -21,7 +21,7 @@ export class GUI {
         this.hoverY = 0;
         this.height = canvas.height;
         this.viewPortHeight = this.height - 200;
-        this.width = canvas.width;
+        this.viewPortWidth = 800;
         this.prevX = 0;
         this.prevY = 0;
         this.animation = animation;
@@ -53,7 +53,10 @@ export class GUI {
         this.clicked = false;
         this.keyFrames = [];
         this.animation.cylinder.setDraw(false);
-        this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.width / this.viewPortHeight, 0.1, 1000.0);
+        this.keyFrames = [];
+        this.keyFrameTextures = [];
+        this.selectedKeyFrame = -1;
+        this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
     }
     /**
      * Sets the GUI's camera to the given camera
@@ -79,17 +82,33 @@ export class GUI {
      * @param mouse
      */
     dragStart(mouse) {
-        if (mouse.offsetY > 600) {
+        if (mouse.offsetY > 800) {
             // outside the main panel
             return;
         }
-        // TODO
-        // Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
-        this.clicked = !!this.intersectedBone.bone;
-        this.bones = this.animation.getScene().meshes[0].bones;
-        this.dragging = true;
-        this.prevX = mouse.screenX;
-        this.prevY = mouse.screenY;
+        if (mouse.offsetX > 800) {
+            this.selectedKeyFrame = this.clickKeyFrame(mouse.offsetX, mouse.offsetY);
+        }
+        else {
+            // TODO
+            // Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
+            this.clicked = !!this.intersectedBone.bone;
+            this.bones = this.animation.getScene().meshes[0].bones;
+            this.dragging = true;
+            this.prevX = mouse.screenX;
+            this.prevY = mouse.screenY;
+            this.selectedKeyFrame = -1;
+        }
+    }
+    clickKeyFrame(x, y) {
+        const a = this.animation;
+        const frameHeight = a.frameHeight + a.framePadding;
+        const x0 = this.viewPortWidth + a.panelWidth / 2 - a.frameWidth / 2;
+        const x1 = this.viewPortWidth + a.panelWidth / 2 + a.frameWidth / 2;
+        const offsetY = y + (a.keyFrameStart - 1) * a.panelHeight * 0.5;
+        const frameNum = Math.floor(offsetY / frameHeight);
+        let clickedKeyFrame = x >= x0 && x <= x1 && offsetY % frameHeight >= a.framePadding && frameNum < this.getNumKeyFrames();
+        return clickedKeyFrame ? frameNum : -1;
     }
     incrementTime(dT) {
         if (this.mode === Mode.playback) {
@@ -171,7 +190,7 @@ export class GUI {
         }
     }
     getMouseRay(x, y) {
-        const ndcX = (2 * x) / this.width - 1;
+        const ndcX = (2 * x) / this.viewPortWidth - 1;
         const ndcY = 1 - (2 * y) / this.viewPortHeight;
         let mouseDir = new Vec4([ndcX, ndcY, -1, 1]);
         mouseDir.multiplyMat4(this.projMatrix().inverse());
@@ -285,6 +304,24 @@ export class GUI {
         // Maybe your bone highlight/dragging logic needs to do stuff here too
         this.clicked = false;
     }
+    scroll(scroll) {
+        if (scroll.offsetX < 800)
+            return;
+        scroll.preventDefault();
+        const h = (2 * this.animation.frameHeight) / this.animation.panelHeight;
+        const p = (2 * this.animation.framePadding) / this.animation.panelHeight;
+        this.animation.keyFrameStart += scroll.deltaY * 0.001;
+        const top = this.animation.keyFrameStart;
+        const bottom = this.animation.keyFrameStart - this.getNumKeyFrames() * (h + p);
+        const maxTop = top - bottom - 1 + p;
+        if (top < 1 || top - bottom < 2) {
+            this.animation.keyFrameStart = 1;
+        }
+        else if (top > maxTop) {
+            this.animation.keyFrameStart = maxTop;
+        }
+        this.animation.initKeyFrames();
+    }
     setSkeleton(index, t) {
         const frame = Math.floor(t);
         const bone = this.bones[index];
@@ -397,6 +434,8 @@ export class GUI {
                     // Add keyframe
                     const frame = this.bones.map((bone) => bone.rotation);
                     this.keyFrames.push(frame);
+                    this.keyFrameTextures.push(this.animation.renderTexture());
+                    this.animation.initKeyFrames();
                 }
                 break;
             }
@@ -404,9 +443,40 @@ export class GUI {
                 if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {
                     this.mode = Mode.playback;
                     this.time = 0;
+                    this.selectedKeyFrame = -1;
                 }
                 else if (this.mode === Mode.playback) {
                     this.mode = Mode.edit;
+                }
+                break;
+            }
+            case "KeyU": {
+                // update the currently selected keyframe
+                // (replace the stored joint orientations with the current ones)
+                if (this.selectedKeyFrame != -1) {
+                    const frame = this.bones.map((bone) => bone.rotation);
+                    this.keyFrames[this.selectedKeyFrame] = frame;
+                    this.keyFrameTextures[this.selectedKeyFrame] = this.animation.renderTexture();
+                    this.animation.initKeyFrames();
+                    break;
+                }
+            }
+            case "Delete": {
+                // delete the selected keyframe
+                if (this.selectedKeyFrame != -1) {
+                    this.keyFrameTextures.splice(this.selectedKeyFrame, 1);
+                    if (this.selectedKeyFrame > this.getNumKeyFrames())
+                        this.selectedKeyFrame = -1;
+                    this.animation.initKeyFrames();
+                }
+                break;
+            }
+            case "Equal": {
+                // set the character's pose (in the main window)
+                // to that stored in the selected keyframe
+                if (this.selectedKeyFrame != -1) {
+                    // set skeleton to selected keyframe
+                    this.setSkeleton(this.bones.findIndex((b) => b.parent == -1), this.selectedKeyFrame);
                 }
                 break;
             }
@@ -427,6 +497,7 @@ export class GUI {
         canvas.addEventListener("mousedown", (mouse) => this.dragStart(mouse));
         canvas.addEventListener("mousemove", (mouse) => this.drag(mouse));
         canvas.addEventListener("mouseup", (mouse) => this.dragEnd(mouse));
+        canvas.addEventListener("wheel", (scroll) => this.scroll(scroll));
         /* Event listener to stop the right click menu */
         canvas.addEventListener("contextmenu", (event) => event.preventDefault());
     }

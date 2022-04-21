@@ -2,7 +2,7 @@ import { Debugger } from "../lib/webglutils/Debugging.js";
 import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { Floor } from "../lib/webglutils/Floor.js";
 import { GUI, Mode } from "./Gui.js";
-import { sceneFSText, sceneFSTextureText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText, cylinderVSText, cylinderFSText, } from "./Shaders.js";
+import { sceneFSText, sceneFSTextureText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText, cylinderVSText, cylinderFSText, keyFramesFSText, keyFramesVSText, } from "./Shaders.js";
 import { Mat4, Vec4 } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
@@ -33,6 +33,12 @@ export class SkinningAnimation extends CanvasAnimation {
         this.sBackRenderPass = new RenderPass(this.extVAO, gl, sBackVSText, sBackFSText);
         // TODO
         // Other initialization, for instance, for the bone highlighting
+        this.keyFrameStart = 1;
+        this.panelWidth = 320;
+        this.panelHeight = 800;
+        this.frameWidth = 260;
+        this.frameHeight = 195;
+        this.framePadding = 25;
         this.initGui();
         this.millis = new Date().getTime();
     }
@@ -69,6 +75,7 @@ export class SkinningAnimation extends CanvasAnimation {
         }
         this.initModel();
         this.initSkeleton();
+        this.initKeyFrames();
         this.gui.reset();
     }
     /**
@@ -189,6 +196,83 @@ export class SkinningAnimation extends CanvasAnimation {
         });
         this.cylinderRenderPass.setup();
     }
+    /**
+     * Sets up the key frames drawing
+     */
+    initKeyFrames() {
+        const numFrames = this.getGUI().getNumKeyFrames();
+        const keyFrames = this.getGUI().keyFrames;
+        const keyFrameTextures = this.getGUI().keyFrameTextures;
+        const w = this.frameWidth / this.panelWidth;
+        const h = (2 * this.frameHeight) / this.panelHeight;
+        const p = (2 * this.framePadding) / this.panelHeight;
+        this.keyFrameRenderPasses = [];
+        for (let i = 0; i < numFrames; i++) {
+            const keyFrameRenderPass = new RenderPass(this.extVAO, this.ctx, keyFramesVSText, keyFramesFSText);
+            const positionsFlat = [
+                -w,
+                this.keyFrameStart - (i + 1) * p - i * h,
+                -w,
+                this.keyFrameStart - (i + 1) * (p + h),
+                w,
+                this.keyFrameStart - (i + 1) * p - i * h,
+                w,
+                this.keyFrameStart - (i + 1) * (p + h),
+            ];
+            const origin = [-w, this.keyFrameStart - (i + 1) * p - (i + 1) * h];
+            const indicesFlat = [0, 1, 2, 2, 1, 3];
+            keyFrameRenderPass.addTexture(keyFrameTextures[i]);
+            keyFrameRenderPass.addUniform("w", (gl, loc) => {
+                gl.uniform1f(loc, i == this.getGUI().selectedKeyFrame ? 0.8 : 1);
+            });
+            keyFrameRenderPass.setIndexBufferData(new Uint32Array(indicesFlat));
+            keyFrameRenderPass.addUniform("origin", (gl, loc) => {
+                gl.uniform2fv(loc, new Float32Array(origin));
+            });
+            keyFrameRenderPass.addAttribute("vertPosition", 2, this.ctx.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array(positionsFlat));
+            keyFrameRenderPass.setDrawData(this.ctx.TRIANGLES, indicesFlat.length, this.ctx.UNSIGNED_INT, 0);
+            keyFrameRenderPass.setup();
+            this.keyFrameRenderPasses[i] = keyFrameRenderPass;
+        }
+    }
+    renderTexture() {
+        const gl = this.ctx;
+        const targetTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, targetTexture);
+        // define size and format of level 0
+        const level = 0;
+        const internalFormat = gl.RGBA;
+        const border = 0;
+        const format = gl.RGBA;
+        const type = gl.UNSIGNED_BYTE;
+        const data = null;
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, this.frameWidth, this.frameHeight, border, format, type, data);
+        // set the filtering so we don't need mips
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        // Create and bind the framebuffer
+        const fb = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+        // attach the texture as the first color attachment
+        const attachmentPoint = gl.COLOR_ATTACHMENT0;
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, targetTexture, level);
+        var renderbuffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, this.frameWidth, this.frameHeight);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+        const bg = this.backgroundColor;
+        gl.clearColor(bg.r, bg.g, bg.b, bg.a);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.CULL_FACE);
+        gl.enable(gl.DEPTH_TEST);
+        gl.frontFace(gl.CCW);
+        gl.cullFace(gl.BACK);
+        this.drawScene(0, 0, 260, 195);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.deleteFramebuffer(fb);
+        return targetTexture;
+    }
     /** @internal
      * Draws a single frame
      *
@@ -228,6 +312,13 @@ export class SkinningAnimation extends CanvasAnimation {
         if (this.scene.meshes.length > 0) {
             gl.viewport(0, 0, 800, 200);
             this.sBackRenderPass.draw();
+        }
+        if (this.getGUI().getNumKeyFrames() > 0) {
+            gl.viewport(800, 0, this.panelWidth, this.panelHeight);
+            this.keyFrameRenderPasses.forEach((rp) => {
+                rp.draw();
+            });
+            // gl.clear();
         }
     }
     drawScene(x, y, width, height) {
