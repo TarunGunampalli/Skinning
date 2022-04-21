@@ -5,6 +5,7 @@ import { Mat4, Vec3, Vec4, Vec2, Mat2, Quat, Mat3 } from "../lib/TSM.js";
 import { Bone } from "./Scene.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 import { ConeBufferGeometry, Texture } from "../lib/threejs/src/Three.js";
+import { KeyFrames } from "./KeyFrames.js";
 
 /**
  * Might be useful for designing any animation GUI
@@ -67,8 +68,9 @@ export class GUI implements IGUI {
 	private clicked: boolean;
 	public bones: Bone[];
 
-	public keyFrames: Quat[][];
-	public keyFrameTextures: WebGLTexture[];
+	// public keyFrames: Quat[][];
+	// public keyFrameTextures: WebGLTexture[];
+	// public keyFrames: KeyFrames;
 	public time: number;
 	public selectedKeyFrame: number;
 
@@ -100,7 +102,7 @@ export class GUI implements IGUI {
 	public getNumKeyFrames(): number {
 		// TODO
 		// Used in the status bar in the GUI
-		return this.keyFrames.length;
+		return this.animation.keyFrames.length();
 	}
 	public getTime(): number {
 		return this.time;
@@ -109,7 +111,7 @@ export class GUI implements IGUI {
 	public getMaxTime(): number {
 		// TODO
 		// The animation should stop after the last keyframe
-		return this.keyFrames.length - 1;
+		return this.animation.keyFrames.length() - 1;
 	}
 
 	/**
@@ -122,9 +124,7 @@ export class GUI implements IGUI {
 		this.mode = Mode.edit;
 		this.intersectedBone = { bone: undefined, t: -1 };
 		this.clicked = false;
-		this.keyFrames = [];
 		this.animation.cylinder.setDraw(false);
-		this.keyFrames = [];
 		this.keyFrameTextures = [];
 		this.selectedKeyFrame = -1;
 
@@ -164,7 +164,7 @@ export class GUI implements IGUI {
 		}
 
 		if (mouse.offsetX > 800) {
-			this.selectedKeyFrame = this.clickKeyFrame(mouse.offsetX, mouse.offsetY);
+			this.selectedKeyFrame = this.animation.keyFrames.clickKeyFrame(mouse.offsetX, mouse.offsetY);
 		} else {
 			// TODO
 			// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
@@ -177,17 +177,6 @@ export class GUI implements IGUI {
 
 			this.selectedKeyFrame = -1;
 		}
-	}
-
-	private clickKeyFrame(x: number, y: number) {
-		const a = this.animation;
-		const frameHeight = a.frameHeight + a.framePadding;
-		const x0 = this.viewPortWidth + a.panelWidth / 2 - a.frameWidth / 2;
-		const x1 = this.viewPortWidth + a.panelWidth / 2 + a.frameWidth / 2;
-		const offsetY = y + (a.keyFrameStart - 1) * a.panelHeight * 0.5;
-		const frameNum = Math.floor(offsetY / frameHeight);
-		let clickedKeyFrame = x >= x0 && x <= x1 && offsetY % frameHeight >= a.framePadding && frameNum < this.getNumKeyFrames();
-		return clickedKeyFrame ? frameNum : -1;
 	}
 
 	public incrementTime(dT: number): void {
@@ -392,33 +381,12 @@ export class GUI implements IGUI {
 		this.clicked = false;
 	}
 
-	public scroll(scroll: WheelEvent): void {
-		if (scroll.offsetX < 800) return;
-		scroll.preventDefault();
-
-		const h = (2 * this.animation.frameHeight) / this.animation.panelHeight;
-		const p = (2 * this.animation.framePadding) / this.animation.panelHeight;
-
-		this.animation.keyFrameStart += scroll.deltaY * 0.001;
-		const top = this.animation.keyFrameStart;
-		const bottom = this.animation.keyFrameStart - this.getNumKeyFrames() * (h + p);
-		const maxTop = top - bottom - 1 + p;
-
-		if (top < 1 || top - bottom < 2) {
-			this.animation.keyFrameStart = 1;
-		} else if (top > maxTop) {
-			this.animation.keyFrameStart = maxTop;
-		}
-
-		this.animation.initKeyFrames();
-	}
-
 	public setSkeleton(index: number, t: number) {
 		const frame = Math.floor(t);
 		const bone = this.bones[index];
 
 		const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-		bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], t % 1).normalize();
+		bone.rotation = Quat.slerp(this.animation.keyFrames.frames[frame][index], this.animation.keyFrames.frames[frame + 1][index], t % 1).normalize();
 		bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
 
 		bone.children.forEach((c) => {
@@ -525,9 +493,9 @@ export class GUI implements IGUI {
 					// TODO
 					// Add keyframe
 					const frame: Quat[] = this.bones.map((bone) => bone.rotation);
-					this.keyFrames.push(frame);
-					this.keyFrameTextures.push(this.animation.renderTexture());
-					this.animation.initKeyFrames();
+					this.animation.keyFrames.frames.push(frame);
+					this.keyFrameTextures.push(this.animation.keyFrames.renderTexture());
+					this.animation.keyFrames.initKeyFrames();
 				}
 				break;
 			}
@@ -546,9 +514,9 @@ export class GUI implements IGUI {
 				// (replace the stored joint orientations with the current ones)
 				if (this.selectedKeyFrame != -1) {
 					const frame: Quat[] = this.bones.map((bone) => bone.rotation);
-					this.keyFrames[this.selectedKeyFrame] = frame;
-					this.keyFrameTextures[this.selectedKeyFrame] = this.animation.renderTexture();
-					this.animation.initKeyFrames();
+					this.animation.keyFrames.frames[this.selectedKeyFrame] = frame;
+					this.keyFrameTextures[this.selectedKeyFrame] = this.animation.keyFrames.renderTexture();
+					this.animation.keyFrames.initKeyFrames();
 					break;
 				}
 			}
@@ -557,7 +525,7 @@ export class GUI implements IGUI {
 				if (this.selectedKeyFrame != -1) {
 					this.keyFrameTextures.splice(this.selectedKeyFrame, 1);
 					if (this.selectedKeyFrame > this.getNumKeyFrames()) this.selectedKeyFrame = -1;
-					this.animation.initKeyFrames();
+					this.animation.keyFrames.initKeyFrames();
 				}
 				break;
 			}
@@ -595,7 +563,7 @@ export class GUI implements IGUI {
 
 		canvas.addEventListener("mouseup", (mouse: MouseEvent) => this.dragEnd(mouse));
 
-		canvas.addEventListener("wheel", (scroll: WheelEvent) => this.scroll(scroll));
+		canvas.addEventListener("wheel", (scroll: WheelEvent) => this.animation.keyFrames.scroll(scroll));
 
 		/* Event listener to stop the right click menu */
 		canvas.addEventListener("contextmenu", (event: any) => event.preventDefault());
