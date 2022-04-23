@@ -16,12 +16,17 @@ import {
 	cylinderFSText,
 	keyFramesFSText,
 	keyFramesVSText,
+	timelineFSText,
+	timelineVSText,
+	scrubberFSText,
+	scrubberVSText,
 } from "./Shaders.js";
 import { Mat4, Vec4, Vec3, Quat } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 import { Camera } from "../lib/webglutils/Camera.js";
 import { Cylinder } from "./Cylinder.js";
+import { Timeline } from "./Timeline.js";
 
 export class SkinningAnimation extends CanvasAnimation {
 	private gui: GUI;
@@ -46,6 +51,12 @@ export class SkinningAnimation extends CanvasAnimation {
 
 	/* Scrub bar background rendering info */
 	private sBackRenderPass: RenderPass;
+
+	/* Timeline rendering info */
+	private timeline: Timeline;
+	private timelineRenderPass: RenderPass;
+	public times: number[];
+	private scrubberRenderPass: RenderPass;
 
 	/* Global Rendering Info */
 	private lightPosition: Vec4;
@@ -77,8 +88,11 @@ export class SkinningAnimation extends CanvasAnimation {
 		this.ctx = Debugger.makeDebugContext(this.ctx);
 		let gl = this.ctx;
 
+		this.times = [];
+
 		this.floor = new Floor();
 		this.cylinder = new Cylinder();
+		this.timeline = new Timeline(this.times);
 
 		this.floorRenderPass = new RenderPass(this.extVAO, gl, floorVSText, floorFSText);
 		this.sceneRenderPass = new RenderPass(this.extVAO, gl, sceneVSText, sceneFSText);
@@ -94,6 +108,8 @@ export class SkinningAnimation extends CanvasAnimation {
 
 		// Status bar
 		this.sBackRenderPass = new RenderPass(this.extVAO, gl, sBackVSText, sBackFSText);
+		this.timelineRenderPass = new RenderPass(this.extVAO, gl, timelineVSText, timelineFSText);
+		this.scrubberRenderPass = new RenderPass(this.extVAO, gl, scrubberVSText, scrubberFSText);
 
 		// TODO
 		// Other initialization, for instance, for the bone highlighting
@@ -446,6 +462,8 @@ export class SkinningAnimation extends CanvasAnimation {
 			keyFrameRenderPass.setup();
 			this.keyFrameRenderPasses[i] = keyFrameRenderPass;
 		}
+
+		this.initTimeline();
 	}
 
 	public renderTexture() {
@@ -494,6 +512,46 @@ export class SkinningAnimation extends CanvasAnimation {
 		return targetTexture;
 	}
 
+	public initTimeline() {
+		this.timelineRenderPass = new RenderPass(this.extVAO, this.ctx, timelineVSText, timelineFSText);
+		this.timeline.setVBAs(this.times);
+		this.timelineRenderPass.setIndexBufferData(this.timeline.indicesFlat());
+		this.timelineRenderPass.addAttribute(
+			"vertPosition",
+			2,
+			this.ctx.FLOAT,
+			false,
+			2 * Float32Array.BYTES_PER_ELEMENT,
+			0,
+			undefined,
+			this.timeline.positionsFlat()
+		);
+		const scrubberPos = this.timeline.transform(this.getGUI().getTime() / this.getGUI().getMaxTime());
+		this.timelineRenderPass.addUniform("s", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniform1f(loc, scrubberPos);
+		});
+		this.timelineRenderPass.setDrawData(this.ctx.LINES, this.timeline.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
+		this.timelineRenderPass.setup();
+	}
+
+	public initScrubber() {
+		this.scrubberRenderPass = new RenderPass(this.extVAO, this.ctx, scrubberVSText, scrubberFSText);
+		this.scrubberRenderPass.setIndexBufferData(new Uint32Array([0, 1]));
+		const time = this.timeline.transform(this.getGUI().getTime() / this.getGUI().getMaxTime());
+		this.scrubberRenderPass.addAttribute(
+			"vertPosition",
+			2,
+			this.ctx.FLOAT,
+			false,
+			2 * Float32Array.BYTES_PER_ELEMENT,
+			0,
+			undefined,
+			new Float32Array([time, 0.53, time, 0.83])
+		);
+		this.scrubberRenderPass.setDrawData(this.ctx.LINES, 2, this.ctx.UNSIGNED_INT, 0);
+		this.scrubberRenderPass.setup();
+	}
+
 	/** @internal
 	 * Draws a single frame
 	 *
@@ -512,7 +570,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		// If the mesh is animating, probably you want to do some updating of the skeleton state here
 		if (GUI.mode === Mode.playback) {
 			GUI.setSkeleton(
-				GUI.bones.findIndex((b) => b.parent == -1),
+				this.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
 				GUI.getTime()
 			);
 		}
@@ -541,6 +599,11 @@ export class SkinningAnimation extends CanvasAnimation {
 		/* Draw status bar */
 		if (this.scene.meshes.length > 0) {
 			gl.viewport(0, 0, 800, 200);
+			if (GUI.mode === Mode.playback) {
+				this.initScrubber();
+				this.scrubberRenderPass.draw();
+			}
+			this.timelineRenderPass.draw();
 			this.sBackRenderPass.draw();
 		}
 

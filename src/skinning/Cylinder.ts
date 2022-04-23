@@ -7,7 +7,7 @@ interface ICylinder {
 }
 
 /**
- * Represents a Menger Sponge
+ * Represents a Cylinder
  */
 export class Cylinder implements ICylinder {
 	// TODO: cylinder data structures
