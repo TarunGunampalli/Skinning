@@ -56,6 +56,7 @@ export class GUI {
         this.keyFrames = [];
         this.keyFrameTextures = [];
         this.selectedKeyFrame = -1;
+        this.hoveredTick = -1;
         this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
     }
     /**
@@ -89,6 +90,12 @@ export class GUI {
         if (mouse.offsetX > 800) {
             this.selectedKeyFrame = this.clickKeyFrame(mouse.offsetX, mouse.offsetY);
         }
+        else if (mouse.offsetY > 600) {
+            const selectedTick = this.findTick(mouse.offsetX, mouse.offsetY);
+            if (selectedTick != -1)
+                this.selectedKeyFrame = selectedTick;
+            this.animation.initTimeline();
+        }
         else {
             // TODO
             // Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
@@ -98,6 +105,19 @@ export class GUI {
             this.prevY = mouse.screenY;
             this.selectedKeyFrame = -1;
         }
+    }
+    findTick(x, y) {
+        const tickTop = 700 - 0.58 * 200 * 0.5;
+        const tickBottom = 700 - 0.78 * 200 * 0.5;
+        if (y < tickBottom || y > tickTop)
+            return -1;
+        const start = 0.1 * 800;
+        const end = 0.9 * 800;
+        const l = end - start;
+        return this.animation.times.findIndex((t) => {
+            const tickX = start + t * l;
+            return x > tickX - 10 && x < tickX + 10;
+        });
     }
     clickKeyFrame(x, y) {
         const a = this.animation;
@@ -128,7 +148,7 @@ export class GUI {
         if (this.mode !== Mode.edit)
             return;
         const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
-        if (this.dragging) {
+        if (this.dragging && mouse.offsetY < 600) {
             const dx = mouse.screenX - this.prevX;
             const dy = mouse.screenY - this.prevY;
             this.prevX = mouse.screenX;
@@ -189,6 +209,8 @@ export class GUI {
         if (this.intersectedBone.bone) {
             this.animation.initCylinder(...this.getBoneTransformation(this.intersectedBone.bone));
         }
+        this.hoveredTick = this.findTick(mouse.offsetX, mouse.offsetY);
+        this.animation.initTimeline();
     }
     getMouseRay(x, y) {
         const ndcX = (2 * x) / this.viewPortWidth - 1;
@@ -448,6 +470,7 @@ export class GUI {
                     this.mode = Mode.playback;
                     this.time = 0;
                     this.selectedKeyFrame = -1;
+                    this.hoveredTick = -1;
                 }
                 else if (this.mode === Mode.playback) {
                     this.mode = Mode.edit;
