@@ -1,6 +1,6 @@
 import { Mat4 } from "../lib/TSM.js";
 /**
- * Represents a Menger Sponge
+ * Represents a Cylinder
  */
 export class Cylinder {
     constructor() {

@@ -93,7 +93,6 @@ export class GUI {
             // TODO
             // Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
             this.clicked = !!this.intersectedBone.bone;
-            this.bones = this.animation.getScene().meshes[0].bones;
             this.dragging = true;
             this.prevX = mouse.screenX;
             this.prevY = mouse.screenY;
@@ -126,6 +125,8 @@ export class GUI {
      * @param mouse
      */
     drag(mouse) {
+        if (this.mode !== Mode.edit)
+            return;
         const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
         if (this.dragging) {
             const dx = mouse.screenX - this.prevX;
@@ -206,7 +207,7 @@ export class GUI {
             bone.rotation = new Quat([-bone.rotation.x, -bone.rotation.y, -bone.rotation.z, -bone.rotation.w]);
         bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
         bone.children.forEach((c) => {
-            const child = this.bones[c];
+            const child = this.animation.getScene().meshes[0].bones[c];
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
             offset.multiplyByQuat(bone.rotation);
             child.position = Vec3.sum(bone.endpoint, offset);
@@ -324,12 +325,12 @@ export class GUI {
     }
     setSkeleton(index, t) {
         const frame = Math.floor(t);
-        const bone = this.bones[index];
+        const bone = this.animation.getScene().meshes[0].bones[index];
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
         bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], t % 1).normalize();
         bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
         bone.children.forEach((c) => {
-            const child = this.bones[c];
+            const child = this.animation.getScene().meshes[0].bones[c];
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
             offset.multiplyByQuat(bone.rotation);
             child.position = Vec3.sum(bone.endpoint, offset);
@@ -432,9 +433,12 @@ export class GUI {
                 if (this.mode === Mode.edit) {
                     // TODO
                     // Add keyframe
-                    const frame = this.bones.map((bone) => bone.rotation);
+                    const frame = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
                     this.keyFrames.push(frame);
                     this.keyFrameTextures.push(this.animation.renderTexture());
+                    const scale = 1 - 1 / (this.getNumKeyFrames() - 1);
+                    this.animation.times = this.animation.times.map((t) => t * scale);
+                    this.animation.times.push(this.animation.times.length ? 1 : 0);
                     this.animation.initKeyFrames();
                 }
                 break;
@@ -454,7 +458,7 @@ export class GUI {
                 // update the currently selected keyframe
                 // (replace the stored joint orientations with the current ones)
                 if (this.selectedKeyFrame != -1) {
-                    const frame = this.bones.map((bone) => bone.rotation);
+                    const frame = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
                     this.keyFrames[this.selectedKeyFrame] = frame;
                     this.keyFrameTextures[this.selectedKeyFrame] = this.animation.renderTexture();
                     this.animation.initKeyFrames();
@@ -464,9 +468,19 @@ export class GUI {
             case "Delete": {
                 // delete the selected keyframe
                 if (this.selectedKeyFrame != -1) {
+                    this.keyFrames.splice(this.selectedKeyFrame, 1);
                     this.keyFrameTextures.splice(this.selectedKeyFrame, 1);
+                    this.animation.times.splice(this.selectedKeyFrame, 1);
                     if (this.selectedKeyFrame > this.getNumKeyFrames())
                         this.selectedKeyFrame = -1;
+                    const scale = 1 / this.animation.times[this.animation.times.length - 1];
+                    this.animation.times = this.animation.times.map((t) => t * scale);
+                    if (this.animation.times[0]) {
+                        const offset = this.animation.times[0];
+                        this.animation.times = this.animation.times.map((t) => t - offset);
+                        const scale = 1 / this.animation.times[this.animation.times.length - 1];
+                        this.animation.times = this.animation.times.map((t) => t * scale);
+                    }
                     this.animation.initKeyFrames();
                 }
                 break;
@@ -476,7 +490,7 @@ export class GUI {
                 // to that stored in the selected keyframe
                 if (this.selectedKeyFrame != -1) {
                     // set skeleton to selected keyframe
-                    this.setSkeleton(this.bones.findIndex((b) => b.parent == -1), this.selectedKeyFrame);
+                    this.setSkeleton(this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1), this.selectedKeyFrame);
                 }
                 break;
             }
