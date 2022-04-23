@@ -277,25 +277,41 @@ export const timelineVSText = `
     precision mediump float;
 
     attribute vec2 vertPosition;
+    uniform float selected;
+    uniform float hovered;
+    varying float s;
+    varying float h;
+    varying float x;
+    
 
     void main() {
         gl_Position = vec4(vertPosition, 0.0, 1.0);
+        s = selected;
+        h = hovered;
+        x = vertPosition.x;
     }
 `;
 
 export const timelineFSText = `
     precision mediump float;
 
-    varying float scrubber;
+    varying float s;
+    varying float h;
+    varying float x;
 
     void main () {
         gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        if (x == s) {
+            gl_FragColor = vec4(1.0, 0, 0, 1.0);
+        } else if (x == h) {
+            gl_FragColor = vec4(1.0, 0, 0, 0.5);
+        }
     }
 `;
 
 export const scrubberVSText = `
     precision mediump float;
-    
+
     attribute vec2 vertPosition;
 
     void main() {

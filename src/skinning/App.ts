@@ -526,9 +526,13 @@ export class SkinningAnimation extends CanvasAnimation {
 			undefined,
 			this.timeline.positionsFlat()
 		);
-		const scrubberPos = this.timeline.transform(this.getGUI().getTime() / this.getGUI().getMaxTime());
-		this.timelineRenderPass.addUniform("s", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
-			gl.uniform1f(loc, scrubberPos);
+		const selected = this.getGUI().selectedKeyFrame == -1 ? -1 : this.timeline.transform(this.times[this.getGUI().selectedKeyFrame]);
+		const hovered = this.getGUI().hoveredTick == -1 ? -1 : this.timeline.transform(this.times[this.getGUI().hoveredTick]);
+		this.timelineRenderPass.addUniform("selected", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniform1f(loc, selected);
+		});
+		this.timelineRenderPass.addUniform("hovered", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniform1f(loc, hovered);
 		});
 		this.timelineRenderPass.setDrawData(this.ctx.LINES, this.timeline.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 		this.timelineRenderPass.setup();
