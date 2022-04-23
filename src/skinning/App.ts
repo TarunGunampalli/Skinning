@@ -403,7 +403,6 @@ export class SkinningAnimation extends CanvasAnimation {
 	 */
 	public initKeyFrames(): void {
 		const numFrames = this.getGUI().getNumKeyFrames();
-		const keyFrames = this.getGUI().keyFrames;
 		const keyFrameTextures = this.getGUI().keyFrameTextures;
 		const w = this.frameWidth / this.panelWidth;
 		const h = (2 * this.frameHeight) / this.panelHeight;
