@@ -276,13 +276,13 @@ export class GUI implements IGUI {
 						const time = ((2 * mouse.offsetX) / 800 - 1 - start) / l;
 						if (this.selectedScrubber) {
 							this.scrubberTime = time;
-							this.setSkeleton(
-								this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-								time
-							);
 						} else if (this.selectedKeyFrame) {
-							if (!this.animation.lockedTimes[this.selectedKeyFrame]) this.animation.setTime(this.selectedKeyFrame, time);
+                            if (!this.animation.lockedTimes[this.selectedKeyFrame]) this.animation.setTime(this.selectedKeyFrame, time);
 						}
+                        this.setSkeleton(
+                            this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
+                            time
+                        );
 						return;
 					}
 					const { bone, t } = this.intersectedBone;
