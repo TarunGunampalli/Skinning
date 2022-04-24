@@ -194,6 +194,7 @@ export const sBackFSText = `
 
     void main () {
         gl_FragColor = vec4(0.1, 0.1, 0.1, 1.0);
+        // gl_FragColor = vec4(0.145, 0.369, 0.373, 1.0);
         if (abs(uv.y-.33) < .005 || abs(uv.y-.67) < .005) {
             gl_FragColor = vec4(1, 1, 1, 1);
         }
@@ -265,34 +266,24 @@ export const timelineVSText = `
     precision mediump float;
 
     attribute vec2 vertPosition;
-    uniform float selected;
-    uniform float hovered;
-    varying float s;
-    varying float h;
-    varying float x;
+    attribute float index;
+    uniform vec4 colors[64];
+    varying vec4 color;
     
 
     void main() {
         gl_Position = vec4(vertPosition, 0.0, 1.0);
-        s = selected;
-        h = hovered;
-        x = vertPosition.x;
+        color = colors[int(index)];
+        
     }
 `;
 export const timelineFSText = `
     precision mediump float;
 
-    varying float s;
-    varying float h;
-    varying float x;
+    varying vec4 color;
 
     void main () {
-        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-        if (x == s) {
-            gl_FragColor = vec4(1.0, 0, 0, 1.0);
-        } else if (x == h) {
-            gl_FragColor = vec4(1.0, 0, 0, 0.5);
-        }
+        gl_FragColor = color;
     }
 `;
 export const scrubberVSText = `

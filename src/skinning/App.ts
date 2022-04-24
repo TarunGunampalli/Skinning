@@ -56,6 +56,7 @@ export class SkinningAnimation extends CanvasAnimation {
 	private timeline: Timeline;
 	private timelineRenderPass: RenderPass;
 	public times: number[];
+	public lockedTimes: boolean[];
 	private scrubberRenderPass: RenderPass;
 
 	/* Global Rendering Info */
@@ -89,6 +90,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		let gl = this.ctx;
 
 		this.times = [];
+		this.lockedTimes = [];
 
 		this.floor = new Floor();
 		this.cylinder = new Cylinder();
@@ -527,13 +529,27 @@ export class SkinningAnimation extends CanvasAnimation {
 			undefined,
 			this.timeline.positionsFlat()
 		);
-		const selected = this.getGUI().selectedKeyFrame == -1 ? -1 : this.timeline.transform(this.times[this.getGUI().selectedKeyFrame]);
-		const hovered = this.getGUI().hoveredTick == -1 ? -1 : this.timeline.transform(this.times[this.getGUI().hoveredTick]);
-		this.timelineRenderPass.addUniform("selected", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
-			gl.uniform1f(loc, selected);
+		const colorIndices = [];
+		for (let i = 0; i < (this.times.length + 1) * 2; i++) {
+			colorIndices.push(i);
+		}
+		this.timelineRenderPass.addAttribute("index", 1, this.ctx.FLOAT, false, Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array(colorIndices));
+		const selected = this.getGUI().selectedKeyFrame == -1 ? -1 : (this.timeline.transform(this.times[this.getGUI().selectedKeyFrame]) / 2 + 0.4) * 1.25;
+		const hovered = this.getGUI().hoveredTick == -1 ? -1 : (this.timeline.transform(this.times[this.getGUI().hoveredTick]) / 2 + 0.4) * 1.25;
+		const colors = [1, 1, 1, 1, 1, 1, 1, 1];
+		this.times.forEach((t, i) => {
+			if (Math.abs(t - selected) < 0.001) {
+				colors.push(0, 1, 0, 1, 0, 1, 0, 1);
+			} else if (Math.abs(t - hovered) < 0.001) {
+				colors.push(0, 1, 0, 0.5, 0, 1, 0, 0.5);
+			} else if (this.lockedTimes[i]) {
+				colors.push(1, 0, 0, 1, 1, 0, 0, 1);
+			} else {
+				colors.push(1, 1, 1, 1, 1, 1, 1, 1);
+			}
 		});
-		this.timelineRenderPass.addUniform("hovered", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
-			gl.uniform1f(loc, hovered);
+		this.timelineRenderPass.addUniform("colors", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniform4fv(loc, new Float32Array(colors));
 		});
 		this.timelineRenderPass.setDrawData(this.ctx.LINES, this.timeline.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 		this.timelineRenderPass.setup();
@@ -541,15 +557,20 @@ export class SkinningAnimation extends CanvasAnimation {
 
 	public setTime(index: number, time: number) {
 		if (index <= 0 || index >= this.times.length - 1) return;
-		if (time < 0 || time > 1) return;
 		const curTime = this.times[index];
-		const scalePrev = time / curTime;
-		const scaleNext = curTime / time;
+		const prevIndex = [...this.times].reverse().findIndex((t, i) => i < index && this.lockedTimes[i]);
+		const p = this.times[prevIndex];
+		const nextIndex = this.times.findIndex((t, i) => i > index && this.lockedTimes[i]);
+		const n = this.times[nextIndex];
+		if (time < p || time > n) return;
+		const prevScale = (time - p) / (curTime - p);
+		const nextScale = (n - time) / (n - curTime);
 		this.times.forEach((t, i) => {
+			if (i <= prevIndex || i >= nextIndex) return;
 			if (i <= index) {
-				this.times[i] *= scalePrev;
+				this.times[i] = p + (t - p) * prevScale;
 			} else {
-				this.times[i] = 1 - (1 - this.times[i]) * scaleNext;
+				this.times[i] = n - (n - t) * nextScale;
 			}
 		});
 		this.initTimeline();
@@ -650,7 +671,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			this.skeletonRenderPass.draw();
 			// TODO
 			// Also draw the highlighted bone (if applicable)
-			if (this.cylinder.draw) this.cylinderRenderPass.draw();
+			if (this.cylinder.draw && this.getGUI().mode === Mode.edit) this.cylinderRenderPass.draw();
 			gl.enable(gl.DEPTH_TEST);
 		}
 	}
