@@ -259,7 +259,7 @@ export class GUI implements IGUI {
 
 							// const tickX = start + t * l;
 
-							this.animation.setTime(this.selectedKeyFrame, x);
+							if (!this.animation.lockedTimes[this.selectedKeyFrame]) this.animation.setTime(this.selectedKeyFrame, x);
 						}
 						return;
 					}

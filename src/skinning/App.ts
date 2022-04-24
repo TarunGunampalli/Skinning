@@ -136,6 +136,7 @@ export class SkinningAnimation extends CanvasAnimation {
 	 */
 	public reset(): void {
 		this.times = [];
+		this.lockedTimes = [];
 		this.gui.reset();
 		this.setScene(this.loadedScene);
 	}
@@ -529,11 +530,16 @@ export class SkinningAnimation extends CanvasAnimation {
 			undefined,
 			this.timeline.positionsFlat()
 		);
-		const colorIndices = [];
-		for (let i = 0; i < (this.times.length + 1) * 2; i++) {
-			colorIndices.push(i);
-		}
-		this.timelineRenderPass.addAttribute("index", 1, this.ctx.FLOAT, false, Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array(colorIndices));
+		this.timelineRenderPass.addAttribute(
+			"index",
+			1,
+			this.ctx.FLOAT,
+			false,
+			Float32Array.BYTES_PER_ELEMENT,
+			0,
+			undefined,
+			new Float32Array([...Array((this.times.length + 1) * 2).keys()])
+		);
 		const selected = this.getGUI().selectedKeyFrame == -1 ? -1 : (this.timeline.transform(this.times[this.getGUI().selectedKeyFrame]) / 2 + 0.4) * 1.25;
 		const hovered = this.getGUI().hoveredTick == -1 ? -1 : (this.timeline.transform(this.times[this.getGUI().hoveredTick]) / 2 + 0.4) * 1.25;
 		const colors = [1, 1, 1, 1, 1, 1, 1, 1];
@@ -678,7 +684,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			this.skeletonRenderPass.draw();
 			// TODO
 			// Also draw the highlighted bone (if applicable)
-			if (this.cylinder.draw && this.getGUI().mode === Mode.edit) this.cylinderRenderPass.draw();
+			if (this.cylinder.draw && this.getGUI().mode === Mode.edit && !gl.getParameter(gl.FRAMEBUFFER_BINDING)) this.cylinderRenderPass.draw();
 			gl.enable(gl.DEPTH_TEST);
 		}
 	}
