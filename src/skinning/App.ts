@@ -133,6 +133,7 @@ export class SkinningAnimation extends CanvasAnimation {
 	 * Setup the animation. This can be called again to reset the animation.
 	 */
 	public reset(): void {
+		this.times = [];
 		this.gui.reset();
 		this.setScene(this.loadedScene);
 	}
@@ -536,6 +537,22 @@ export class SkinningAnimation extends CanvasAnimation {
 		});
 		this.timelineRenderPass.setDrawData(this.ctx.LINES, this.timeline.indicesFlat().length, this.ctx.UNSIGNED_INT, 0);
 		this.timelineRenderPass.setup();
+	}
+
+	public setTime(index: number, time: number) {
+		if (index <= 0 || index >= this.times.length - 1) return;
+		if (time < 0 || time > 1) return;
+		const curTime = this.times[index];
+		const scalePrev = time / curTime;
+		const scaleNext = curTime / time;
+		this.times.forEach((t, i) => {
+			if (i <= index) {
+				this.times[i] *= scalePrev;
+			} else {
+				this.times[i] = 1 - (1 - this.times[i]) * scaleNext;
+			}
+		});
+		this.initTimeline();
 	}
 
 	public initScrubber() {

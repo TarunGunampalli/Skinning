@@ -164,18 +164,19 @@ export class GUI implements IGUI {
 			return;
 		}
 
+		this.dragging = true;
+
 		if (mouse.offsetX > 800) {
 			this.selectedKeyFrame = this.clickKeyFrame(mouse.offsetX, mouse.offsetY);
 		} else if (mouse.offsetY > 600) {
 			const selectedTick = this.findTick(mouse.offsetX, mouse.offsetY);
-			if (selectedTick != -1) this.selectedKeyFrame = selectedTick;
+			this.selectedKeyFrame = selectedTick;
 			this.animation.initTimeline();
 		} else {
 			// TODO
 			// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
 			this.clicked = !!this.intersectedBone.bone;
 
-			this.dragging = true;
 			this.prevX = mouse.screenX;
 			this.prevY = mouse.screenY;
 
@@ -224,11 +225,11 @@ export class GUI implements IGUI {
 	 * @param mouse
 	 */
 	public drag(mouse: MouseEvent): void {
-		if (this.mode !== Mode.edit) return;
+		if (this.mode !== Mode.edit || mouse.offsetX > 800) return;
 
 		const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
 
-		if (this.dragging && mouse.offsetY < 600) {
+		if (this.dragging) {
 			const dx = mouse.screenX - this.prevX;
 			const dy = mouse.screenY - this.prevY;
 			this.prevX = mouse.screenX;
@@ -246,6 +247,22 @@ export class GUI implements IGUI {
 
 			switch (mouse.buttons) {
 				case 1: {
+					if (mouse.offsetY > 600 && mouse.offsetX < 800) {
+						if (this.selectedKeyFrame) {
+							const start = -0.8;
+							const end = 0.8;
+							const l = end - start;
+
+							let x = (2 * mouse.offsetX) / 800 - 1;
+							x -= start;
+							x /= l;
+
+							// const tickX = start + t * l;
+
+							this.animation.setTime(this.selectedKeyFrame, x);
+						}
+						return;
+					}
 					const { bone, t } = this.intersectedBone;
 					if (this.clicked) {
 						// rotate bone
@@ -435,11 +452,17 @@ export class GUI implements IGUI {
 	}
 
 	public setSkeleton(index: number, t: number) {
-		const frame = Math.floor(t);
+		// const frame = Math.floor(t);
+		const frame = this.animation.times.findIndex((time) => time >= t / this.getMaxTime()) - 1;
+		const time = this.animation.times[frame];
+		const nextTime = this.animation.times[frame + 1];
+		const slerpT = (t / this.getMaxTime() - time) / (nextTime - time);
+		console.log(slerpT);
+
 		const bone = this.animation.getScene().meshes[0].bones[index];
 
 		const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-		bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], t % 1).normalize();
+		bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], slerpT).normalize();
 		bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
 
 		bone.children.forEach((c) => {
