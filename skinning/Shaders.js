@@ -257,8 +257,8 @@ export const keyFramesFSText = `
     void main () {
         gl_FragColor = texture2D(tex, uv);
         gl_FragColor = vec4(gl_FragColor.xyz, opacity);
-        if (uv.x > 0.965 || uv.x < 0.01 || uv.y > 0.96 || uv.y < 0.015) {
-            gl_FragColor = vec4(0.95, 0.5, 0.5, 1);
+        if (uv.x > 0.96 || uv.x < 0.015 || uv.y > 0.955 || uv.y < 0.02) {
+            gl_FragColor = vec4(1.0, 0.3, 0.3, 1);
         }
     }
 `;
