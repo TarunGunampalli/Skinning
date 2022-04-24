@@ -538,7 +538,7 @@ export class GUI {
             case "KeyP": {
                 if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {
                     this.mode = Mode.playback;
-                    this.time = 0;
+                    this.time = this.scrubberTime == 1 ? 0 : this.scrubberTime * this.getMaxTime();
                     this.selectedKeyFrame = -1;
                     this.hoveredTick = -1;
                     this.animation.cylinder.setDraw(false);
