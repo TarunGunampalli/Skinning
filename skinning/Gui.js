@@ -469,7 +469,7 @@ export class GUI {
                 break;
             }
             case "KeyK": {
-                if (this.mode === Mode.edit) {
+                if (this.mode === Mode.edit && this.getNumKeyFrames() < 64) {
                     // TODO
                     // Add keyframe
                     const frame = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
@@ -478,6 +478,9 @@ export class GUI {
                     const scale = 1 - 1 / (this.getNumKeyFrames() - 1);
                     this.animation.times = this.animation.times.map((t) => t * scale);
                     this.animation.times.push(this.animation.times.length ? 1 : 0);
+                    if (this.animation.lockedTimes.length > 1)
+                        this.animation.lockedTimes[this.animation.lockedTimes.length - 1] = false;
+                    this.animation.lockedTimes.push(true);
                     this.animation.initKeyFrames();
                 }
                 break;
@@ -493,6 +496,12 @@ export class GUI {
                     this.mode = Mode.edit;
                 }
                 break;
+            }
+            case "KeyL": {
+                if (this.mode === Mode.edit && this.selectedKeyFrame != -1) {
+                    this.animation.lockedTimes[this.selectedKeyFrame] = !this.animation.lockedTimes[this.selectedKeyFrame];
+                    this.selectedKeyFrame = -1;
+                }
             }
             case "KeyU": {
                 // update the currently selected keyframe
@@ -511,6 +520,7 @@ export class GUI {
                     this.keyFrames.splice(this.selectedKeyFrame, 1);
                     this.keyFrameTextures.splice(this.selectedKeyFrame, 1);
                     this.animation.times.splice(this.selectedKeyFrame, 1);
+                    this.animation.lockedTimes.splice(this.selectedKeyFrame, 1);
                     if (this.selectedKeyFrame > this.getNumKeyFrames())
                         this.selectedKeyFrame = -1;
                     const scale = 1 / this.animation.times[this.animation.times.length - 1];
