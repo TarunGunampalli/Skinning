@@ -298,8 +298,7 @@ export class GUI implements IGUI {
 						const rotQuat = this.getRotQuat(bone, false, b);
 						this.rotateBone(bone, rotQuat);
 					} else {
-						let rotAxis: Vec3 = Vec3.cross(this.camera.forward(), mouseDir);
-						rotAxis = rotAxis.normalize();
+						const rotAxis: Vec3 = Vec3.cross(this.camera.forward(), mouseDir).normalize();
 
 						if (this.fps) {
 							this.camera.rotate(rotAxis, GUI.rotationSpeed);
