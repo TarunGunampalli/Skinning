@@ -363,7 +363,6 @@ export class GUI {
         const time = this.animation.times[frame];
         const nextTime = this.animation.times[frame + 1];
         const slerpT = (t / this.getMaxTime() - time) / (nextTime - time);
-        console.log(slerpT);
         const bone = this.animation.getScene().meshes[0].bones[index];
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
         bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], slerpT).normalize();
@@ -475,8 +474,22 @@ export class GUI {
                     const frame = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
                     this.keyFrames.push(frame);
                     this.keyFrameTextures.push(this.animation.renderTexture());
-                    const scale = 1 - 1 / (this.getNumKeyFrames() - 1);
-                    this.animation.times = this.animation.times.map((t) => t * scale);
+                    let prev;
+                    for (let i = this.animation.times.length - 2; i >= 0; i--) {
+                        if (this.animation.lockedTimes[i]) {
+                            prev = i;
+                            break;
+                        }
+                    }
+                    const p = this.animation.times[prev];
+                    const numTicks = this.animation.times.length - prev;
+                    let scale = (1 - (1 - p) / numTicks - p) / (1 - p);
+                    console.log(p, numTicks, scale);
+                    this.animation.times = this.animation.times.map((t, i) => {
+                        if (i > prev)
+                            return p + (t - p) * scale;
+                        return t;
+                    });
                     this.animation.times.push(this.animation.times.length ? 1 : 0);
                     if (this.animation.lockedTimes.length > 1)
                         this.animation.lockedTimes[this.animation.lockedTimes.length - 1] = false;
