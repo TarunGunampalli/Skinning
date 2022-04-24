@@ -558,10 +558,17 @@ export class SkinningAnimation extends CanvasAnimation {
 	public setTime(index: number, time: number) {
 		if (index <= 0 || index >= this.times.length - 1) return;
 		const curTime = this.times[index];
-		const prevIndex = [...this.times].reverse().findIndex((t, i) => i < index && this.lockedTimes[i]);
+		let prevIndex;
+		for (let i = index; i >= 0; i--) {
+			if (this.lockedTimes[i]) {
+				prevIndex = i;
+				break;
+			}
+		}
 		const p = this.times[prevIndex];
 		const nextIndex = this.times.findIndex((t, i) => i > index && this.lockedTimes[i]);
 		const n = this.times[nextIndex];
+		console.log(p, n);
 		if (time < p || time > n) return;
 		const prevScale = (time - p) / (curTime - p);
 		const nextScale = (n - time) / (n - curTime);
