@@ -69,6 +69,8 @@ export class GUI implements IGUI {
 	public keyFrames: Quat[][];
 	public keyFrameTextures: WebGLTexture[];
 	public time: number;
+	public scrubberTime: number;
+	public selectedScrubber: boolean;
 	public selectedKeyFrame: number;
 	public hoveredTick: number;
 
@@ -102,8 +104,12 @@ export class GUI implements IGUI {
 		// Used in the status bar in the GUI
 		return this.keyFrames.length;
 	}
+
 	public getTime(): number {
 		return this.time;
+	}
+	public getScrubberTime(): number {
+		return this.scrubberTime;
 	}
 
 	public getMaxTime(): number {
@@ -119,6 +125,7 @@ export class GUI implements IGUI {
 		this.fps = false;
 		this.dragging = false;
 		this.time = 0;
+		this.scrubberTime = 1;
 		this.mode = Mode.edit;
 		this.intersectedBone = { bone: undefined, t: -1 };
 		this.clicked = false;
@@ -128,6 +135,7 @@ export class GUI implements IGUI {
 		this.keyFrameTextures = [];
 		this.selectedKeyFrame = -1;
 		this.hoveredTick = -1;
+		this.selectedScrubber = false;
 
 		this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
 	}
@@ -169,9 +177,10 @@ export class GUI implements IGUI {
 		if (mouse.offsetX > 800) {
 			this.selectedKeyFrame = this.clickKeyFrame(mouse.offsetX, mouse.offsetY);
 		} else if (mouse.offsetY > 600) {
+			this.selectedScrubber = this.clickScrubber(mouse.offsetX, mouse.offsetY);
+			if (this.selectedScrubber) return;
 			const selectedTick = this.findTick(mouse.offsetX, mouse.offsetY);
 			this.selectedKeyFrame = selectedTick;
-			this.animation.initTimeline();
 		} else {
 			// TODO
 			// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
@@ -182,9 +191,10 @@ export class GUI implements IGUI {
 
 			this.selectedKeyFrame = -1;
 		}
+		this.animation.initTimeline();
 	}
 
-	private findTick(x: number, y: number) {
+	private findTick(x: number, y: number): number {
 		const tickTop = 700 - 0.58 * 200 * 0.5;
 		const tickBottom = 700 - 0.78 * 200 * 0.5;
 		if (y < tickBottom || y > tickTop) return -1;
@@ -193,26 +203,38 @@ export class GUI implements IGUI {
 		const l = end - start;
 		return this.animation.times.findIndex((t) => {
 			const tickX = start + t * l;
-			return x > tickX - 10 && x < tickX + 10;
+			return Math.abs(x - tickX) < 5;
 		});
 	}
 
-	private clickKeyFrame(x: number, y: number) {
-		const a = this.animation;
-		const frameHeight = a.frameHeight + a.framePadding;
-		const x0 = this.viewPortWidth + a.panelWidth / 2 - a.frameWidth / 2;
-		const x1 = this.viewPortWidth + a.panelWidth / 2 + a.frameWidth / 2;
-		const offsetY = y + (a.keyFrameStart - 1) * a.panelHeight * 0.5;
+	private clickScrubber(x: number, y: number): boolean {
+		const tickTop = 700 - 0.53 * 200 * 0.5;
+		const tickBottom = 700 - 0.83 * 200 * 0.5;
+		if (y < tickBottom || y > tickTop) return false;
+		const start = 0.1 * 800;
+		const end = 0.9 * 800;
+		const l = end - start;
+		const scrubberX = this.scrubberTime * l + start;
+		return Math.abs(scrubberX - x) < 10;
+	}
+
+	private clickKeyFrame(x: number, y: number): number {
+		const frameHeight = SkinningAnimation.frameHeight + SkinningAnimation.framePadding;
+		const x0 = this.viewPortWidth + SkinningAnimation.panelWidth / 2 - SkinningAnimation.frameWidth / 2;
+		const x1 = this.viewPortWidth + SkinningAnimation.panelWidth / 2 + SkinningAnimation.frameWidth / 2;
+		const offsetY = y + (this.animation.keyFrameStart - 1) * SkinningAnimation.panelHeight * 0.5;
 		const frameNum = Math.floor(offsetY / frameHeight);
-		let clickedKeyFrame = x >= x0 && x <= x1 && offsetY % frameHeight >= a.framePadding && frameNum < this.getNumKeyFrames();
+		let clickedKeyFrame = x >= x0 && x <= x1 && offsetY % frameHeight >= SkinningAnimation.framePadding && frameNum < this.getNumKeyFrames();
 		return clickedKeyFrame ? frameNum : -1;
 	}
 
 	public incrementTime(dT: number): void {
 		if (this.mode === Mode.playback) {
 			this.time += dT;
+			this.scrubberTime = this.time / this.getMaxTime();
 			if (this.time >= this.getMaxTime()) {
 				this.time = 0;
+				this.scrubberTime = 1;
 				this.mode = Mode.edit;
 			}
 		}
@@ -248,18 +270,18 @@ export class GUI implements IGUI {
 			switch (mouse.buttons) {
 				case 1: {
 					if (mouse.offsetY > 600 && mouse.offsetX < 800) {
-						if (this.selectedKeyFrame) {
-							const start = -0.8;
-							const end = 0.8;
-							const l = end - start;
-
-							let x = (2 * mouse.offsetX) / 800 - 1;
-							x -= start;
-							x /= l;
-
-							// const tickX = start + t * l;
-
-							if (!this.animation.lockedTimes[this.selectedKeyFrame]) this.animation.setTime(this.selectedKeyFrame, x);
+						const start = -0.8;
+						const end = 0.8;
+						const l = end - start;
+						const time = ((2 * mouse.offsetX) / 800 - 1 - start) / l;
+						if (this.selectedScrubber) {
+							this.scrubberTime = time;
+							this.setSkeleton(
+								this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
+								time
+							);
+						} else if (this.selectedKeyFrame) {
+							if (!this.animation.lockedTimes[this.selectedKeyFrame]) this.animation.setTime(this.selectedKeyFrame, time);
 						}
 						return;
 					}
@@ -434,8 +456,8 @@ export class GUI implements IGUI {
 		if (scroll.offsetX < 800) return;
 		scroll.preventDefault();
 
-		const h = (2 * this.animation.frameHeight) / this.animation.panelHeight;
-		const p = (2 * this.animation.framePadding) / this.animation.panelHeight;
+		const h = (2 * SkinningAnimation.frameHeight) / SkinningAnimation.panelHeight;
+		const p = (2 * SkinningAnimation.framePadding) / SkinningAnimation.panelHeight;
 
 		this.animation.keyFrameStart += scroll.deltaY * 0.001;
 		const top = this.animation.keyFrameStart;
@@ -564,12 +586,15 @@ export class GUI implements IGUI {
 				break;
 			}
 			case "KeyK": {
-				if (this.mode === Mode.edit && this.getNumKeyFrames() < 64) {
-					// TODO
-					// Add keyframe
-					const frame: Quat[] = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
+				if (this.mode === Mode.playback || this.getNumKeyFrames() >= 64) return;
+
+				// TODO
+				// Add keyframe
+				const frame: Quat[] = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
+				const texture = this.animation.renderTexture();
+				if (this.scrubberTime == 1) {
 					this.keyFrames.push(frame);
-					this.keyFrameTextures.push(this.animation.renderTexture());
+					this.keyFrameTextures.push(texture);
 					let prev;
 					for (let i = this.animation.times.length - 2; i >= 0; i--) {
 						if (this.animation.lockedTimes[i]) {
@@ -581,7 +606,6 @@ export class GUI implements IGUI {
 					const numTicks = this.animation.times.length - prev;
 					let scale = (1 - (1 - p) / numTicks - p) / (1 - p);
 
-					console.log(p, numTicks, scale);
 					this.animation.times = this.animation.times.map((t, i) => {
 						if (i > prev) return p + (t - p) * scale;
 						return t;
@@ -589,8 +613,16 @@ export class GUI implements IGUI {
 					this.animation.times.push(this.animation.times.length ? 1 : 0);
 					if (this.animation.lockedTimes.length > 1) this.animation.lockedTimes[this.animation.lockedTimes.length - 1] = false;
 					this.animation.lockedTimes.push(true);
-					this.animation.initKeyFrames();
+				} else {
+					const index = this.animation.times.findIndex((t) => t >= this.scrubberTime);
+					if (this.scrubberTime == this.animation.times[index]) return;
+					this.keyFrames.splice(index, 0, frame);
+					this.keyFrameTextures.splice(index, 0, texture);
+					this.animation.times.splice(index, 0, this.scrubberTime);
+					this.animation.lockedTimes.splice(index, 0, false);
 				}
+				this.animation.initKeyFrames();
+				this.animation.initTimeline();
 				break;
 			}
 			case "KeyP": {
@@ -599,6 +631,7 @@ export class GUI implements IGUI {
 					this.time = 0;
 					this.selectedKeyFrame = -1;
 					this.hoveredTick = -1;
+					this.animation.cylinder.setDraw(false);
 				} else if (this.mode === Mode.playback) {
 					this.mode = Mode.edit;
 				}
@@ -638,6 +671,7 @@ export class GUI implements IGUI {
 						this.animation.times = this.animation.times.map((t) => t * scale);
 					}
 					this.animation.initKeyFrames();
+					this.animation.initTimeline();
 				}
 				break;
 			}

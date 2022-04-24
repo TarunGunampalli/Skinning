@@ -40,11 +40,6 @@ export class SkinningAnimation extends CanvasAnimation {
         // TODO
         // Other initialization, for instance, for the bone highlighting
         this.keyFrameStart = 1;
-        this.panelWidth = 320;
-        this.panelHeight = 800;
-        this.frameWidth = 260;
-        this.frameHeight = 195;
-        this.framePadding = 25;
         this.initGui();
         this.millis = new Date().getTime();
     }
@@ -84,6 +79,7 @@ export class SkinningAnimation extends CanvasAnimation {
         this.initModel();
         this.initSkeleton();
         this.initKeyFrames();
+        this.initTimeline();
         this.gui.reset();
     }
     /**
@@ -210,9 +206,9 @@ export class SkinningAnimation extends CanvasAnimation {
     initKeyFrames() {
         const numFrames = this.getGUI().getNumKeyFrames();
         const keyFrameTextures = this.getGUI().keyFrameTextures;
-        const w = this.frameWidth / this.panelWidth;
-        const h = (2 * this.frameHeight) / this.panelHeight;
-        const p = (2 * this.framePadding) / this.panelHeight;
+        const w = SkinningAnimation.frameWidth / SkinningAnimation.panelWidth;
+        const h = (2 * SkinningAnimation.frameHeight) / SkinningAnimation.panelHeight;
+        const p = (2 * SkinningAnimation.framePadding) / SkinningAnimation.panelHeight;
         this.keyFrameRenderPasses = [];
         for (let i = 0; i < numFrames; i++) {
             const keyFrameRenderPass = new RenderPass(this.extVAO, this.ctx, keyFramesVSText, keyFramesFSText);
@@ -230,7 +226,7 @@ export class SkinningAnimation extends CanvasAnimation {
             const indicesFlat = [0, 1, 2, 2, 1, 3];
             keyFrameRenderPass.addTexture(keyFrameTextures[i]);
             keyFrameRenderPass.addUniform("w", (gl, loc) => {
-                gl.uniform1f(loc, i == this.getGUI().selectedKeyFrame ? 0.8 : 1);
+                gl.uniform1f(loc, i == this.getGUI().selectedKeyFrame ? 0.6 : 1);
             });
             keyFrameRenderPass.setIndexBufferData(new Uint32Array(indicesFlat));
             keyFrameRenderPass.addUniform("origin", (gl, loc) => {
@@ -241,7 +237,6 @@ export class SkinningAnimation extends CanvasAnimation {
             keyFrameRenderPass.setup();
             this.keyFrameRenderPasses[i] = keyFrameRenderPass;
         }
-        this.initTimeline();
     }
     renderTexture() {
         const gl = this.ctx;
@@ -254,7 +249,7 @@ export class SkinningAnimation extends CanvasAnimation {
         const format = gl.RGBA;
         const type = gl.UNSIGNED_BYTE;
         const data = null;
-        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, this.frameWidth, this.frameHeight, border, format, type, data);
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, SkinningAnimation.frameWidth, SkinningAnimation.frameHeight, border, format, type, data);
         // set the filtering so we don't need mips
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -267,7 +262,7 @@ export class SkinningAnimation extends CanvasAnimation {
         gl.framebufferTexture2D(gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, targetTexture, level);
         var renderbuffer = gl.createRenderbuffer();
         gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
-        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, this.frameWidth, this.frameHeight);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, SkinningAnimation.frameWidth, SkinningAnimation.frameHeight);
         gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
         const bg = this.backgroundColor;
         gl.clearColor(bg.r, bg.g, bg.b, bg.a);
@@ -286,22 +281,25 @@ export class SkinningAnimation extends CanvasAnimation {
         this.timeline.setVBAs(this.times);
         this.timelineRenderPass.setIndexBufferData(this.timeline.indicesFlat());
         this.timelineRenderPass.addAttribute("vertPosition", 2, this.ctx.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, this.timeline.positionsFlat());
-        this.timelineRenderPass.addAttribute("index", 1, this.ctx.FLOAT, false, Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array([...Array((this.times.length + 1) * 2).keys()]));
+        const colorIndices = [];
+        for (let i = 0; i <= this.times.length + 1; i++)
+            colorIndices.push(i, i);
+        this.timelineRenderPass.addAttribute("index", 1, this.ctx.FLOAT, false, Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array(colorIndices));
         const selected = this.getGUI().selectedKeyFrame == -1 ? -1 : (this.timeline.transform(this.times[this.getGUI().selectedKeyFrame]) / 2 + 0.4) * 1.25;
         const hovered = this.getGUI().hoveredTick == -1 ? -1 : (this.timeline.transform(this.times[this.getGUI().hoveredTick]) / 2 + 0.4) * 1.25;
-        const colors = [1, 1, 1, 1, 1, 1, 1, 1];
+        const colors = [...SkinningAnimation.timelineColor];
         this.times.forEach((t, i) => {
-            if (Math.abs(t - selected) < 0.001) {
-                colors.push(0, 1, 0, 1, 0, 1, 0, 1);
+            if (Math.abs(t - selected) < 0.0001) {
+                colors.push(...SkinningAnimation.selectedColor);
             }
-            else if (Math.abs(t - hovered) < 0.001) {
-                colors.push(0, 1, 0, 0.5, 0, 1, 0, 0.5);
+            else if (Math.abs(t - hovered) < 0.0001) {
+                colors.push(...SkinningAnimation.hoverColor);
             }
             else if (this.lockedTimes[i]) {
-                colors.push(1, 0, 0, 1, 1, 0, 0, 1);
+                colors.push(...SkinningAnimation.lockedColor);
             }
             else {
-                colors.push(1, 1, 1, 1, 1, 1, 1, 1);
+                colors.push(...SkinningAnimation.timelineColor);
             }
         });
         this.timelineRenderPass.addUniform("colors", (gl, loc) => {
@@ -324,7 +322,6 @@ export class SkinningAnimation extends CanvasAnimation {
         const p = this.times[prevIndex];
         const nextIndex = this.times.findIndex((t, i) => i > index && this.lockedTimes[i]);
         const n = this.times[nextIndex];
-        console.log(p, n);
         if (time < p || time > n)
             return;
         const prevScale = (time - p) / (curTime - p);
@@ -344,7 +341,7 @@ export class SkinningAnimation extends CanvasAnimation {
     initScrubber() {
         this.scrubberRenderPass = new RenderPass(this.extVAO, this.ctx, scrubberVSText, scrubberFSText);
         this.scrubberRenderPass.setIndexBufferData(new Uint32Array([0, 1]));
-        const time = this.timeline.transform(this.getGUI().getTime() / this.getGUI().getMaxTime());
+        const time = this.timeline.transform(this.getGUI().getScrubberTime());
         this.scrubberRenderPass.addAttribute("vertPosition", 2, this.ctx.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array([time, 0.53, time, 0.83]));
         this.scrubberRenderPass.setDrawData(this.ctx.LINES, 2, this.ctx.UNSIGNED_INT, 0);
         this.scrubberRenderPass.setup();
@@ -387,15 +384,13 @@ export class SkinningAnimation extends CanvasAnimation {
         /* Draw status bar */
         if (this.scene.meshes.length > 0) {
             gl.viewport(0, 0, 800, 200);
-            if (GUI.mode === Mode.playback) {
-                this.initScrubber();
-                this.scrubberRenderPass.draw();
-            }
+            this.initScrubber();
             this.timelineRenderPass.draw();
+            this.scrubberRenderPass.draw();
             this.sBackRenderPass.draw();
         }
         if (this.getGUI().getNumKeyFrames() > 0) {
-            gl.viewport(800, 0, this.panelWidth, this.panelHeight);
+            gl.viewport(800, 0, SkinningAnimation.panelWidth, SkinningAnimation.panelHeight);
             this.keyFrameRenderPasses.forEach((rp) => {
                 rp.draw();
             });
@@ -413,7 +408,7 @@ export class SkinningAnimation extends CanvasAnimation {
             this.skeletonRenderPass.draw();
             // TODO
             // Also draw the highlighted bone (if applicable)
-            if (this.cylinder.draw && this.getGUI().mode === Mode.edit && !gl.getParameter(gl.FRAMEBUFFER_BINDING))
+            if (this.cylinder.draw && !gl.getParameter(gl.FRAMEBUFFER_BINDING))
                 this.cylinderRenderPass.draw();
             gl.enable(gl.DEPTH_TEST);
         }
@@ -431,6 +426,15 @@ export class SkinningAnimation extends CanvasAnimation {
         this.scene.load(() => this.initScene());
     }
 }
+SkinningAnimation.hoverColor = [0, 1, 0, 0.5];
+SkinningAnimation.selectedColor = [0, 1, 0, 1];
+SkinningAnimation.timelineColor = [1, 1, 1, 1];
+SkinningAnimation.lockedColor = [1, 0, 0, 1];
+SkinningAnimation.panelWidth = 320;
+SkinningAnimation.panelHeight = 800;
+SkinningAnimation.frameWidth = 260;
+SkinningAnimation.frameHeight = 195;
+SkinningAnimation.framePadding = 25;
 export function initializeCanvas() {
     const canvas = document.getElementById("glCanvas");
     /* Start drawing */
