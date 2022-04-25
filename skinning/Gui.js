@@ -197,7 +197,7 @@ export class GUI {
                             if (!this.animation.lockedTimes[this.selectedKeyFrame])
                                 this.animation.setTime(this.selectedKeyFrame, time);
                         }
-                        this.setSkeleton(this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1), this.scrubberTime * this.getMaxTime());
+                        this.setSkeleton(this.scrubberTime * this.getMaxTime());
                         return;
                     }
                     const { bone, t } = this.intersectedBone;
@@ -381,9 +381,12 @@ export class GUI {
         }
         this.animation.initKeyFrames();
     }
-    setSkeleton(index, t) {
-        // const frame = Math.floor(t);
-        const frame = this.animation.times.findIndex((time) => time >= t / this.getMaxTime()) - 1;
+    setSkeleton(t, index) {
+        if (!index)
+            index = this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1);
+        const frame = this.animation.times.findIndex((time) => time > t / this.getMaxTime()) - 1;
+        if (frame < 0 || frame >= this.keyFrames.length)
+            return;
         const time = this.animation.times[frame];
         const nextTime = this.animation.times[frame + 1];
         const slerpT = (t / this.getMaxTime() - time) / (nextTime - time);
@@ -396,7 +399,7 @@ export class GUI {
             const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
             offset.multiplyByQuat(bone.rotation);
             child.position = Vec3.sum(bone.endpoint, offset);
-            this.setSkeleton(c, t);
+            this.setSkeleton(t, c);
         });
     }
     /**
@@ -531,7 +534,7 @@ export class GUI {
                     this.animation.lockedTimes.splice(index, 0, false);
                 }
                 if (this.getNumKeyFrames() > 1) {
-                    this.setSkeleton(this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1), this.scrubberTime * this.getMaxTime());
+                    this.setSkeleton(this.scrubberTime * this.getMaxTime());
                 }
                 this.animation.initKeyFrames();
                 this.animation.initTimeline();
@@ -565,7 +568,7 @@ export class GUI {
                     this.keyFrames[this.selectedKeyFrame] = frame;
                     this.keyFrameTextures[this.selectedKeyFrame] = this.animation.renderTexture();
                     this.animation.initKeyFrames();
-                    this.setSkeleton(this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1), this.scrubberTime * this.getMaxTime());
+                    this.setSkeleton(this.scrubberTime * this.getMaxTime());
                 }
                 break;
             }
@@ -586,7 +589,7 @@ export class GUI {
                         const scale = 1 / this.animation.times[this.animation.times.length - 1];
                         this.animation.times = this.animation.times.map((t) => t * scale);
                     }
-                    this.setSkeleton(this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1), this.scrubberTime * this.getMaxTime());
+                    this.setSkeleton(this.scrubberTime * this.getMaxTime());
                     this.animation.initKeyFrames();
                     this.animation.initTimeline();
                 }
@@ -597,7 +600,7 @@ export class GUI {
                 // to that stored in the selected keyframe
                 if (this.selectedKeyFrame != -1) {
                     // set skeleton to selected keyframe
-                    this.setSkeleton(this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1), this.selectedKeyFrame);
+                    this.setSkeleton(this.selectedKeyFrame);
                 }
                 break;
             }
