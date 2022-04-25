@@ -469,6 +469,14 @@ export class SkinningAnimation extends CanvasAnimation {
 		}
 	}
 
+	public renderTextures() {
+		this.getGUI().keyFrameTextures = this.getGUI().keyFrames.map((kf, i) => {
+			this.getGUI().setSkeleton(i);
+			return this.renderTexture();
+		});
+		this.keyFrameRenderPasses.forEach((kf, i) => kf.addTexture(this.getGUI().keyFrameTextures[i]));
+	}
+
 	public renderTexture() {
 		const gl = this.ctx;
 		const targetTexture = gl.createTexture();
@@ -615,10 +623,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		// TODO
 		// If the mesh is animating, probably you want to do some updating of the skeleton state here
 		if (GUI.mode === Mode.playback) {
-			GUI.setSkeleton(
-				this.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-				GUI.getTime()
-			);
+			GUI.setSkeleton(GUI.getTime());
 		}
 
 		// draw the status message
@@ -656,7 +661,6 @@ export class SkinningAnimation extends CanvasAnimation {
 			this.keyFrameRenderPasses.forEach((rp) => {
 				rp.draw();
 			});
-			// gl.clear();
 		}
 	}
 

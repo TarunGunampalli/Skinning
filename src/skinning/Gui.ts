@@ -280,10 +280,7 @@ export class GUI implements IGUI {
 						} else if (this.selectedKeyFrame) {
 							if (!this.animation.lockedTimes[this.selectedKeyFrame]) this.animation.setTime(this.selectedKeyFrame, time);
 						}
-						this.setSkeleton(
-							this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-							this.scrubberTime * this.getMaxTime()
-						);
+						this.setSkeleton(this.scrubberTime * this.getMaxTime());
 						return;
 					}
 					const { bone, t } = this.intersectedBone;
@@ -473,9 +470,10 @@ export class GUI implements IGUI {
 		this.animation.initKeyFrames();
 	}
 
-	public setSkeleton(index: number, t: number) {
-		// const frame = Math.floor(t);
-		const frame = this.animation.times.findIndex((time) => time >= t / this.getMaxTime()) - 1;
+	public setSkeleton(t: number, index?: number) {
+		if (!index) index = this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1);
+		const frame = this.animation.times.findIndex((time) => time > t / this.getMaxTime()) - 1;
+		if (frame < 0 || frame >= this.keyFrames.length) return;
 		const time = this.animation.times[frame];
 		const nextTime = this.animation.times[frame + 1];
 		const slerpT = (t / this.getMaxTime() - time) / (nextTime - time);
@@ -491,7 +489,7 @@ export class GUI implements IGUI {
 			const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
 			offset.multiplyByQuat(bone.rotation);
 			child.position = Vec3.sum(bone.endpoint, offset);
-			this.setSkeleton(c, t);
+			this.setSkeleton(t, c);
 		});
 	}
 
@@ -622,10 +620,7 @@ export class GUI implements IGUI {
 					this.animation.lockedTimes.splice(index, 0, false);
 				}
 				if (this.getNumKeyFrames() > 1) {
-					this.setSkeleton(
-						this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-						this.scrubberTime * this.getMaxTime()
-					);
+					this.setSkeleton(this.scrubberTime * this.getMaxTime());
 				}
 				this.animation.initKeyFrames();
 				this.animation.initTimeline();
@@ -658,11 +653,9 @@ export class GUI implements IGUI {
 					this.keyFrames[this.selectedKeyFrame] = frame;
 					this.keyFrameTextures[this.selectedKeyFrame] = this.animation.renderTexture();
 					this.animation.initKeyFrames();
-					this.setSkeleton(
-						this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-						this.scrubberTime * this.getMaxTime()
-					);
+					this.setSkeleton(this.scrubberTime * this.getMaxTime());
 				}
+
 				break;
 			}
 			case "Delete": {
@@ -681,10 +674,7 @@ export class GUI implements IGUI {
 						const scale = 1 / this.animation.times[this.animation.times.length - 1];
 						this.animation.times = this.animation.times.map((t) => t * scale);
 					}
-					this.setSkeleton(
-						this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-						this.scrubberTime * this.getMaxTime()
-					);
+					this.setSkeleton(this.scrubberTime * this.getMaxTime());
 					this.animation.initKeyFrames();
 					this.animation.initTimeline();
 				}
@@ -695,10 +685,7 @@ export class GUI implements IGUI {
 				// to that stored in the selected keyframe
 				if (this.selectedKeyFrame != -1) {
 					// set skeleton to selected keyframe
-					this.setSkeleton(
-						this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-						this.selectedKeyFrame
-					);
+					this.setSkeleton(this.selectedKeyFrame);
 				}
 				break;
 			}
