@@ -621,10 +621,12 @@ export class GUI implements IGUI {
 					this.animation.times.splice(index, 0, this.scrubberTime);
 					this.animation.lockedTimes.splice(index, 0, false);
 				}
-				this.setSkeleton(
-					this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
-					this.scrubberTime * this.getMaxTime()
-				);
+				if (this.getNumKeyFrames() > 1) {
+					this.setSkeleton(
+						this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1),
+						this.scrubberTime * this.getMaxTime()
+					);
+				}
 				this.animation.initKeyFrames();
 				this.animation.initTimeline();
 				break;
