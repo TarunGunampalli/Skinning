@@ -238,13 +238,13 @@ export class SkinningAnimation extends CanvasAnimation {
             this.keyFrameRenderPasses[i] = keyFrameRenderPass;
         }
     }
-    // public renderTextures() {
-    // 	this.getGUI().keyFrameTextures = this.getGUI().keyFrames.map((kf, i) => {
-    // 		this.getGUI().setSkeleton(i);
-    // 		return this.renderTexture();
-    // 	});
-    // 	this.keyFrameRenderPasses.forEach((kf, i) => kf.addTexture(this.getGUI().keyFrameTextures[i]));
-    // }
+    renderTextures() {
+        this.getGUI().keyFrameTextures = this.getGUI().keyFrames.map((kf, i) => {
+            this.getGUI().setSkeleton(i);
+            return this.renderTexture();
+        });
+        this.keyFrameRenderPasses.forEach((kf, i) => kf.addTexture(this.getGUI().keyFrameTextures[i]));
+    }
     renderTexture() {
         const gl = this.ctx;
         const targetTexture = gl.createTexture();
