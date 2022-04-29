@@ -754,7 +754,7 @@ export class GUI implements IGUI {
 				}
 				break;
 			}
-			case "KeyM": {
+			case "KeyT": {
 				this.translate = true;
 				break;
 			}
@@ -767,7 +767,7 @@ export class GUI implements IGUI {
 
 	public onKeyup(key: KeyboardEvent): void {
 		switch (key.code) {
-			case "KeyM": {
+			case "KeyT": {
 				this.translate = false;
 			}
 		}
