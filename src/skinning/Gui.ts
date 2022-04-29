@@ -314,7 +314,7 @@ export class GUI implements IGUI {
 						const lookDir = this.camera.forward().copy().normalize();
 						const vBone = Vec3.difference(bone.endpoint, bone.position);
 						const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
-						if (this.translate && this.clickT != -1 && bone.parent == -1) {
+						if (this.translate && this.clickT != -1) {
 							const oldPoint = Vec3.sum(bone.position, vBone.scale(this.clickT, new Vec3()));
 							const offset = Vec3.difference(end, oldPoint);
 							this.translateBone(bone, Vec3.sum(bone.position, offset));
