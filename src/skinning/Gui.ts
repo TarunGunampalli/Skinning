@@ -65,6 +65,8 @@ export class GUI implements IGUI {
 
 	private intersectedBone: BoneIntersection;
 	private clicked: boolean;
+	private clickT: number;
+	private translate: boolean;
 
 	public keyFrames: Quat[][];
 	public keyFrameTextures: WebGLTexture[];
@@ -129,6 +131,7 @@ export class GUI implements IGUI {
 		this.mode = Mode.edit;
 		this.intersectedBone = { bone: undefined, t: -1 };
 		this.clicked = false;
+		this.clickT = -1;
 		this.keyFrames = [];
 		this.animation.cylinder.setDraw(false);
 		this.keyFrames = [];
@@ -136,6 +139,7 @@ export class GUI implements IGUI {
 		this.selectedKeyFrame = -1;
 		this.hoveredTick = -1;
 		this.selectedScrubber = false;
+		this.translate = false;
 
 		this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
 	}
@@ -185,6 +189,11 @@ export class GUI implements IGUI {
 			// TODO
 			// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
 			this.clicked = !!this.intersectedBone.bone;
+			const { bone, t } = this.intersectedBone;
+			const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
+			const vBone = Vec3.difference(bone.endpoint, bone.position);
+			const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
+			this.clickT = Vec3.difference(end, bone.position).length() / vBone.length();
 
 			this.prevX = mouse.screenX;
 			this.prevY = mouse.screenY;
@@ -289,12 +298,18 @@ export class GUI implements IGUI {
 						const lookDir = this.camera.forward().copy().normalize();
 						const vBone = Vec3.difference(bone.endpoint, bone.position);
 						const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
-						const b = Vec3.difference(end, bone.position).normalize();
-						b.subtract(lookDir.scale(Vec3.dot(lookDir, b), new Vec3()));
-						b.normalize().scale(Vec3.cross(lookDir, vBone).length());
-						b.add(lookDir.scale(Vec3.dot(lookDir, vBone)));
-						const rotQuat = this.getRotQuat(bone, false, b);
-						this.rotateBone(bone, rotQuat);
+						if (this.translate) {
+							const oldPoint = Vec3.sum(bone.position, vBone.scale(this.clickT, new Vec3()));
+							const offset = Vec3.difference(end, oldPoint);
+							this.translateBone(bone, Vec3.sum(bone.position, offset));
+						} else {
+							const b = Vec3.difference(end, bone.position).normalize();
+							b.subtract(lookDir.scale(Vec3.dot(lookDir, b), new Vec3()));
+							b.normalize().scale(Vec3.cross(lookDir, vBone).length());
+							b.add(lookDir.scale(Vec3.dot(lookDir, vBone)));
+							const rotQuat = this.getRotQuat(bone, false, b);
+							this.rotateBone(bone, rotQuat);
+						}
 					} else {
 						const rotAxis: Vec3 = Vec3.cross(this.camera.forward(), mouseDir).normalize();
 
@@ -343,7 +358,22 @@ export class GUI implements IGUI {
 		return { pos: this.camera.pos(), dir };
 	}
 
+	private translateBone(bone: Bone, pos: Vec3) {
+		const vBone = Vec3.difference(bone.endpoint, bone.position);
+		const offset = Vec3.difference(pos, bone.position);
+		bone.position = pos;
+		bone.endpoint = Vec3.sum(bone.position, vBone);
+
+		bone.children.forEach((c) => {
+			const child = this.animation.getScene().meshes[0].bones[c];
+			// const offset = Vec3.difference(child.position, oldEndpoint).multiplyByQuat(rotQuat);
+			// child.position = Vec3.sum(bone.endpoint, offset);
+			this.translateBone(child, Vec3.sum(child.position, offset));
+		});
+	}
+
 	private rotateBone(bone: Bone, rotQuat: Quat) {
+		const oldEndpoint = bone.endpoint;
 		const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
 		bone.rotation = Quat.product(rotQuat, bone.rotation).normalize();
 		if (bone.rotation.w < 0) bone.rotation = new Quat([-bone.rotation.x, -bone.rotation.y, -bone.rotation.z, -bone.rotation.w]);
@@ -351,8 +381,7 @@ export class GUI implements IGUI {
 
 		bone.children.forEach((c) => {
 			const child = this.animation.getScene().meshes[0].bones[c];
-			const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
-			offset.multiplyByQuat(bone.rotation);
+			const offset = Vec3.difference(child.position, oldEndpoint).multiplyByQuat(rotQuat);
 			child.position = Vec3.sum(bone.endpoint, offset);
 			this.rotateBone(child, rotQuat);
 		});
@@ -689,9 +718,21 @@ export class GUI implements IGUI {
 				}
 				break;
 			}
+			case "KeyM": {
+				this.translate = true;
+				break;
+			}
 			default: {
 				console.log("Key : '", key.code, "' was pressed.");
 				break;
+			}
+		}
+	}
+
+	public onKeyup(key: KeyboardEvent): void {
+		switch (key.code) {
+			case "KeyM": {
+				this.translate = false;
 			}
 		}
 	}
@@ -703,6 +744,7 @@ export class GUI implements IGUI {
 	private registerEventListeners(canvas: HTMLCanvasElement): void {
 		/* Event listener for key controls */
 		window.addEventListener("keydown", (key: KeyboardEvent) => this.onKeydown(key));
+		window.addEventListener("keyup", (key: KeyboardEvent) => this.onKeyup(key));
 
 		/* Event listener for mouse controls */
 		canvas.addEventListener("mousedown", (mouse: MouseEvent) => this.dragStart(mouse));
