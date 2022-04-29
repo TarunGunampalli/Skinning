@@ -39,6 +39,13 @@ export enum Mode {
 	edit,
 }
 
+interface KeyFrame {
+	orientations: Quat[];
+	positions: Vec3[];
+	texture: WebGLTexture;
+	camera?: number; // not sure what to do for this yet
+}
+
 /**
  * Handles Mouse and Button events along with
  * the the camera.
@@ -68,8 +75,7 @@ export class GUI implements IGUI {
 	private clickT: number;
 	private translate: boolean;
 
-	public keyFrames: Quat[][];
-	public keyFrameTextures: WebGLTexture[];
+	public keyFrames: KeyFrame[];
 	public time: number;
 	public scrubberTime: number;
 	public selectedScrubber: boolean;
@@ -135,13 +141,12 @@ export class GUI implements IGUI {
 		this.keyFrames = [];
 		this.animation.cylinder.setDraw(false);
 		this.keyFrames = [];
-		this.keyFrameTextures = [];
 		this.selectedKeyFrame = -1;
 		this.hoveredTick = -1;
 		this.selectedScrubber = false;
 		this.translate = false;
 
-		this.camera = new Camera(new Vec3([0, 0, -6]), new Vec3([0, 0, 0]), new Vec3([0, 1, 0]), 45, this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
+		this.camera = new Camera(new Vec3([0, 0, -6]), Vec3.zero, new Vec3([0, 1, 0]), 45, this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
 	}
 
 	/**
@@ -189,11 +194,15 @@ export class GUI implements IGUI {
 			// TODO
 			// Some logic to rotate the bones, instead of moving the camera, if there is a currently highlighted bone
 			this.clicked = !!this.intersectedBone.bone;
-			const { bone, t } = this.intersectedBone;
-			const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
-			const vBone = Vec3.difference(bone.endpoint, bone.position);
-			const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
-			this.clickT = Vec3.difference(end, bone.position).length() / vBone.length();
+			if (this.clicked) {
+				const { bone, t } = this.intersectedBone;
+				const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
+				const vBone = Vec3.difference(bone.endpoint, bone.position);
+				const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
+				this.clickT = Vec3.difference(end, bone.position).length() / vBone.length();
+			} else {
+				this.clickT = -1;
+			}
 
 			this.prevX = mouse.screenX;
 			this.prevY = mouse.screenY;
@@ -298,7 +307,7 @@ export class GUI implements IGUI {
 						const lookDir = this.camera.forward().copy().normalize();
 						const vBone = Vec3.difference(bone.endpoint, bone.position);
 						const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
-						if (this.translate) {
+						if (this.translate && this.clickT != -1) {
 							const oldPoint = Vec3.sum(bone.position, vBone.scale(this.clickT, new Vec3()));
 							const offset = Vec3.difference(end, oldPoint);
 							this.translateBone(bone, Vec3.sum(bone.position, offset));
@@ -390,7 +399,7 @@ export class GUI implements IGUI {
 	private findBone(mouseRay: Ray): BoneIntersection {
 		const scene = this.animation.getScene();
 		let intersectedBone: BoneIntersection = { bone: undefined, t: -1 };
-		scene.meshes[0].bones.forEach((bone) => {
+		scene.meshes[0].bones.forEach((bone, i) => {
 			const { intersect, t0: t } = this.boneIntersect(bone, mouseRay);
 			if (intersect) {
 				if (intersectedBone.t == -1 || t < intersectedBone.t) {
@@ -500,22 +509,47 @@ export class GUI implements IGUI {
 	}
 
 	public setSkeleton(t: number, index?: number) {
-		if (!index) index = this.animation.getScene().meshes[0].bones.findIndex((b) => b.parent == -1);
-		const frame = this.animation.times.findIndex((time) => time > t / this.getMaxTime()) - 1;
-		if (frame < 0 || frame >= this.keyFrames.length) return;
-		const time = this.animation.times[frame];
-		const nextTime = this.animation.times[frame + 1];
-		const slerpT = (t / this.getMaxTime() - time) / (nextTime - time);
+		const bones = this.animation.getScene().meshes[0].bones;
+		if (index === undefined) {
+			const roots = bones.map((b, i) => i).filter((i) => bones[i].parent == -1);
+			roots.forEach((root) => this.setSkeleton(t, root));
+			return;
+		}
+		// if (!index) index = bones.findIndex((b) => b.parent == -1);
+		const frameIndex = this.animation.times.findIndex((time) => time > t / this.getMaxTime()) - 1;
+		if (frameIndex < 0 || frameIndex >= this.keyFrames.length) return;
+		const f1 = this.keyFrames[frameIndex];
+		const f2 = this.keyFrames[frameIndex + 1];
+		const time = this.animation.times[frameIndex];
+		const nextTime = this.animation.times[frameIndex + 1];
+		const interpT = (t / this.getMaxTime() - time) / (nextTime - time);
 
-		const bone = this.animation.getScene().meshes[0].bones[index];
-
+		const bone = bones[index];
 		const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
-		bone.rotation = Quat.slerp(this.keyFrames[frame][index], this.keyFrames[frame + 1][index], slerpT).normalize();
+		const oldEndpoint = bone.endpoint;
+		const parent = bones[bone.parent];
+		if (!parent) {
+			bone.position = Vec3.lerp(f1.positions[index], f2.positions[index], interpT);
+		} else {
+			const initalParent = parent ? Vec3.difference(parent.initialEndpoint, parent.initialPosition) : Vec3.zero;
+			const parentEnd = parent ? parent.endpoint : Vec3.zero;
+			const parentPos1 = parent ? f1.positions[bone.parent] : Vec3.zero;
+			const parentPos2 = parent ? f2.positions[bone.parent] : Vec3.zero;
+			const vParent1 = parent ? f1.orientations[bone.parent].multiplyVec3(initalParent) : Vec3.zero;
+			const vParent2 = parent ? f2.orientations[bone.parent].multiplyVec3(initalParent) : Vec3.zero;
+			const parentEnd1 = parent ? Vec3.sum(parentPos1, vParent1) : Vec3.zero;
+			const parentEnd2 = parent ? Vec3.sum(parentPos2, vParent2) : Vec3.zero;
+			const offset1 = Vec3.difference(f1.positions[index], parentEnd1);
+			const offset2 = Vec3.difference(f2.positions[index], parentEnd2);
+			bone.position = Vec3.sum(parentEnd, Vec3.lerp(offset1, offset2, interpT));
+		}
+
+		bone.rotation = Quat.slerp(f1.orientations[index], f2.orientations[index], interpT).normalize();
 		bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
 
 		bone.children.forEach((c) => {
-			const child = this.animation.getScene().meshes[0].bones[c];
-			const offset = Vec3.difference(child.initialPosition, bone.initialEndpoint);
+			const child = bones[c];
+			const offset = Vec3.difference(child.position, oldEndpoint);
 			offset.multiplyByQuat(bone.rotation);
 			child.position = Vec3.sum(bone.endpoint, offset);
 			this.setSkeleton(t, c);
@@ -617,11 +651,13 @@ export class GUI implements IGUI {
 
 				// TODO
 				// Add keyframe
-				const frame: Quat[] = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
+				const orientations = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
+				const positions = this.animation.getScene().meshes[0].bones.map((bone) => bone.position);
 				const texture = this.animation.renderTexture();
-				if (this.scrubberTime == 1) {
+				const frame: KeyFrame = { orientations, positions, texture };
+
+				if (this.scrubberTime == 1 || this.getNumKeyFrames() < 2) {
 					this.keyFrames.push(frame);
-					this.keyFrameTextures.push(texture);
 					let prev;
 					for (let i = this.animation.times.length - 2; i >= 0; i--) {
 						if (this.animation.lockedTimes[i]) {
@@ -644,7 +680,6 @@ export class GUI implements IGUI {
 					const index = this.animation.times.findIndex((t) => t >= this.scrubberTime);
 					if (this.scrubberTime == this.animation.times[index]) return;
 					this.keyFrames.splice(index, 0, frame);
-					this.keyFrameTextures.splice(index, 0, texture);
 					this.animation.times.splice(index, 0, this.scrubberTime);
 					this.animation.lockedTimes.splice(index, 0, false);
 				}
@@ -678,9 +713,11 @@ export class GUI implements IGUI {
 				// update the currently selected keyframe
 				// (replace the stored joint orientations with the current ones)
 				if (this.selectedKeyFrame != -1) {
-					const frame: Quat[] = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
+					const orientations = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
+					const positions = this.animation.getScene().meshes[0].bones.map((bone) => bone.position);
+					const texture = this.animation.renderTexture();
+					const frame: KeyFrame = { orientations, positions, texture };
 					this.keyFrames[this.selectedKeyFrame] = frame;
-					this.keyFrameTextures[this.selectedKeyFrame] = this.animation.renderTexture();
 					this.animation.initKeyFrames();
 					this.setSkeleton(this.scrubberTime * this.getMaxTime());
 				}
@@ -691,7 +728,6 @@ export class GUI implements IGUI {
 				// delete the selected keyframe
 				if (this.selectedKeyFrame != -1) {
 					this.keyFrames.splice(this.selectedKeyFrame, 1);
-					this.keyFrameTextures.splice(this.selectedKeyFrame, 1);
 					this.animation.times.splice(this.selectedKeyFrame, 1);
 					this.animation.lockedTimes.splice(this.selectedKeyFrame, 1);
 					if (this.selectedKeyFrame > this.getNumKeyFrames()) this.selectedKeyFrame = -1;

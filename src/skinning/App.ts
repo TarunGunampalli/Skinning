@@ -27,6 +27,7 @@ import { RenderPass } from "../lib/webglutils/RenderPass.js";
 import { Camera } from "../lib/webglutils/Camera.js";
 import { Cylinder } from "./Cylinder.js";
 import { Timeline } from "./Timeline.js";
+import { KeyframeTrack } from "../lib/threejs/src/Three.js";
 
 export class SkinningAnimation extends CanvasAnimation {
 	private gui: GUI;
@@ -424,7 +425,7 @@ export class SkinningAnimation extends CanvasAnimation {
 	 */
 	public initKeyFrames(): void {
 		const numFrames = this.getGUI().getNumKeyFrames();
-		const keyFrameTextures = this.getGUI().keyFrameTextures;
+		const keyFrames = this.getGUI().keyFrames;
 		const w = SkinningAnimation.frameWidth / SkinningAnimation.panelWidth;
 		const h = (2 * SkinningAnimation.frameHeight) / SkinningAnimation.panelHeight;
 		const p = (2 * SkinningAnimation.framePadding) / SkinningAnimation.panelHeight;
@@ -444,7 +445,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			];
 			const origin = [-w, this.keyFrameStart - (i + 1) * p - (i + 1) * h];
 			const indicesFlat = [0, 1, 2, 2, 1, 3];
-			keyFrameRenderPass.addTexture(keyFrameTextures[i]);
+			keyFrameRenderPass.addTexture(keyFrames[i].texture);
 			keyFrameRenderPass.addUniform("w", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
 				gl.uniform1f(loc, i == this.getGUI().selectedKeyFrame ? 0.6 : 1);
 			});
@@ -467,14 +468,6 @@ export class SkinningAnimation extends CanvasAnimation {
 			keyFrameRenderPass.setup();
 			this.keyFrameRenderPasses[i] = keyFrameRenderPass;
 		}
-	}
-
-	public renderTextures() {
-		this.getGUI().keyFrameTextures = this.getGUI().keyFrames.map((kf, i) => {
-			this.getGUI().setSkeleton(i);
-			return this.renderTexture();
-		});
-		this.keyFrameRenderPasses.forEach((kf, i) => kf.addTexture(this.getGUI().keyFrameTextures[i]));
 	}
 
 	public renderTexture() {
