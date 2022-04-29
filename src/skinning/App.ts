@@ -151,6 +151,19 @@ export class SkinningAnimation extends CanvasAnimation {
 		this.sBackRenderPass.setDrawData(this.ctx.TRIANGLES, 6, this.ctx.UNSIGNED_INT, 0);
 		this.sBackRenderPass.setup();
 
+		this.scrubberRenderPass.setIndexBufferData(new Uint32Array([0, 1]));
+		this.scrubberRenderPass.addAttribute(
+			"vertPosition",
+			3,
+			this.ctx.FLOAT,
+			false,
+			3 * Float32Array.BYTES_PER_ELEMENT,
+			0,
+			undefined,
+			new Float32Array([0, 0.53, 1, 0, 0.83, 1])
+		);
+		this.scrubberRenderPass.setDrawData(this.ctx.LINES, 2, this.ctx.UNSIGNED_INT, 0);
+
 		this.cylinderRenderPass.setIndexBufferData(this.cylinder.indicesFlat());
 		this.cylinderRenderPass.addAttribute(
 			"aVertPos",
@@ -582,20 +595,11 @@ export class SkinningAnimation extends CanvasAnimation {
 	}
 
 	public initScrubber() {
-		this.scrubberRenderPass = new RenderPass(this.extVAO, this.ctx, scrubberVSText, scrubberFSText);
-		this.scrubberRenderPass.setIndexBufferData(new Uint32Array([0, 1]));
 		const time = this.timeline.transform(this.getGUI().getScrubberTime());
-		this.scrubberRenderPass.addAttribute(
-			"vertPosition",
-			2,
-			this.ctx.FLOAT,
-			false,
-			2 * Float32Array.BYTES_PER_ELEMENT,
-			0,
-			undefined,
-			new Float32Array([time, 0.53, time, 0.83])
-		);
-		this.scrubberRenderPass.setDrawData(this.ctx.LINES, 2, this.ctx.UNSIGNED_INT, 0);
+		console.log(time);
+		this.scrubberRenderPass.addUniform("trans", (gl: WebGLRenderingContext, loc: WebGLUniformLocation) => {
+			gl.uniformMatrix3fv(loc, false, new Float32Array([1, 0, 0, 0, 1, 0, time, 0, 1]));
+		});
 		this.scrubberRenderPass.setup();
 	}
 
@@ -616,7 +620,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		// TODO
 		// If the mesh is animating, probably you want to do some updating of the skeleton state here
 		if (GUI.mode === Mode.playback) {
-			GUI.setSkeleton(GUI.getTime());
+			GUI.setFrame(GUI.getTime());
 		}
 
 		// draw the status message

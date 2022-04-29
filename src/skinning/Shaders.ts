@@ -303,10 +303,12 @@ export const timelineFSText = `
 export const scrubberVSText = `
     precision mediump float;
 
-    attribute vec2 vertPosition;
+    attribute vec3 vertPosition;
+    uniform mat3 trans;
 
     void main() {
-        gl_Position = vec4(vertPosition, 0.0, 1.0);
+        vec3 v = trans * vertPosition;
+        gl_Position = vec4(v.xy, 0.0, 1.0);
     }
 `;
 
