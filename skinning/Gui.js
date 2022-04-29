@@ -198,9 +198,11 @@ export class GUI {
                         const start = -0.8;
                         const end = 0.8;
                         const l = end - start;
-                        const time = ((2 * mouse.offsetX) / 800 - 1 - start) / l;
-                        if (time <= 0.001 || time > 0.999)
-                            return;
+                        let time = ((2 * mouse.offsetX) / 800 - 1 - start) / l;
+                        if (time <= 0)
+                            time = 0;
+                        else if (time >= 1)
+                            time = 1;
                         if (this.selectedScrubber) {
                             this.scrubberTime = time;
                         }
@@ -208,7 +210,7 @@ export class GUI {
                             if (!this.animation.lockedTimes[this.selectedKeyFrame])
                                 this.animation.setTime(this.selectedKeyFrame, time);
                         }
-                        this.setSkeleton(this.scrubberTime * this.getMaxTime());
+                        this.setFrame(this.scrubberTime * this.getMaxTime());
                         return;
                     }
                     const { bone, t } = this.intersectedBone;
@@ -217,7 +219,7 @@ export class GUI {
                         const lookDir = this.camera.forward().copy().normalize();
                         const vBone = Vec3.difference(bone.endpoint, bone.position);
                         const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
-                        if (this.translate && this.clickT != -1) {
+                        if (this.translate && this.clickT != -1 && bone.parent == -1) {
                             const oldPoint = Vec3.sum(bone.position, vBone.scale(this.clickT, new Vec3()));
                             const offset = Vec3.difference(end, oldPoint);
                             this.translateBone(bone, Vec3.sum(bone.position, offset));
@@ -283,8 +285,6 @@ export class GUI {
         bone.endpoint = Vec3.sum(bone.position, vBone);
         bone.children.forEach((c) => {
             const child = this.animation.getScene().meshes[0].bones[c];
-            // const offset = Vec3.difference(child.position, oldEndpoint).multiplyByQuat(rotQuat);
-            // child.position = Vec3.sum(bone.endpoint, offset);
             this.translateBone(child, Vec3.sum(child.position, offset));
         });
     }
@@ -411,14 +411,8 @@ export class GUI {
         }
         this.animation.initKeyFrames();
     }
-    setSkeleton(t, index) {
+    setFrame(t, index) {
         const bones = this.animation.getScene().meshes[0].bones;
-        if (index === undefined) {
-            const roots = bones.map((b, i) => i).filter((i) => bones[i].parent == -1);
-            roots.forEach((root) => this.setSkeleton(t, root));
-            return;
-        }
-        // if (!index) index = bones.findIndex((b) => b.parent == -1);
         const frameIndex = this.animation.times.findIndex((time) => time > t / this.getMaxTime()) - 1;
         if (frameIndex < 0 || frameIndex >= this.keyFrames.length)
             return;
@@ -427,6 +421,19 @@ export class GUI {
         const time = this.animation.times[frameIndex];
         const nextTime = this.animation.times[frameIndex + 1];
         const interpT = (t / this.getMaxTime() - time) / (nextTime - time);
+        if (index === undefined) {
+            // call setFrame on each root
+            const roots = bones.map((b, i) => i).filter((i) => bones[i].parent == -1);
+            roots.forEach((root) => this.setFrame(t, root));
+            // set camera
+            const up1 = Vec3.difference(f1.camera.up, f1.camera.position);
+            const up2 = Vec3.difference(f2.camera.up, f2.camera.position);
+            const position = Vec3.lerp(f1.camera.position, f2.camera.position, interpT);
+            const target = Vec3.lerp(f1.camera.target, f2.camera.target, interpT);
+            const up = Vec3.sum(position, Vec3.lerp(up1, up2, interpT));
+            this.setCamera(position, target, up, this.camera.fov(), this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
+            return;
+        }
         const bone = bones[index];
         const initialB = Vec3.difference(bone.initialEndpoint, bone.initialPosition);
         const oldEndpoint = bone.endpoint;
@@ -435,17 +442,14 @@ export class GUI {
             bone.position = Vec3.lerp(f1.positions[index], f2.positions[index], interpT);
         }
         else {
-            const initalParent = parent ? Vec3.difference(parent.initialEndpoint, parent.initialPosition) : Vec3.zero;
-            const parentEnd = parent ? parent.endpoint : Vec3.zero;
-            const parentPos1 = parent ? f1.positions[bone.parent] : Vec3.zero;
-            const parentPos2 = parent ? f2.positions[bone.parent] : Vec3.zero;
-            const vParent1 = parent ? f1.orientations[bone.parent].multiplyVec3(initalParent) : Vec3.zero;
-            const vParent2 = parent ? f2.orientations[bone.parent].multiplyVec3(initalParent) : Vec3.zero;
-            const parentEnd1 = parent ? Vec3.sum(parentPos1, vParent1) : Vec3.zero;
-            const parentEnd2 = parent ? Vec3.sum(parentPos2, vParent2) : Vec3.zero;
+            const initalParent = Vec3.difference(parent.initialEndpoint, parent.initialPosition);
+            const vParent1 = f1.orientations[bone.parent].multiplyVec3(initalParent);
+            const vParent2 = f2.orientations[bone.parent].multiplyVec3(initalParent);
+            const parentEnd1 = Vec3.sum(f1.positions[bone.parent], vParent1);
+            const parentEnd2 = Vec3.sum(f2.positions[bone.parent], vParent2);
             const offset1 = Vec3.difference(f1.positions[index], parentEnd1);
             const offset2 = Vec3.difference(f2.positions[index], parentEnd2);
-            bone.position = Vec3.sum(parentEnd, Vec3.lerp(offset1, offset2, interpT));
+            bone.position = Vec3.sum(parent.endpoint, Vec3.lerp(offset1, offset2, interpT));
         }
         bone.rotation = Quat.slerp(f1.orientations[index], f2.orientations[index], interpT).normalize();
         bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
@@ -454,7 +458,7 @@ export class GUI {
             const offset = Vec3.difference(child.position, oldEndpoint);
             offset.multiplyByQuat(bone.rotation);
             child.position = Vec3.sum(bone.endpoint, offset);
-            this.setSkeleton(t, c);
+            this.setFrame(t, c);
         });
     }
     /**
@@ -557,7 +561,8 @@ export class GUI {
                 const orientations = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
                 const positions = this.animation.getScene().meshes[0].bones.map((bone) => bone.position);
                 const texture = this.animation.renderTexture();
-                const frame = { orientations, positions, texture };
+                const camera = { position: this.camera.pos(), target: this.camera.target(), up: this.camera.up() };
+                const frame = { orientations, positions, texture, camera };
                 if (this.scrubberTime == 1 || this.getNumKeyFrames() < 2) {
                     this.keyFrames.push(frame);
                     let prev;
@@ -589,7 +594,7 @@ export class GUI {
                     this.animation.lockedTimes.splice(index, 0, false);
                 }
                 if (this.getNumKeyFrames() > 1) {
-                    this.setSkeleton(this.scrubberTime * this.getMaxTime());
+                    this.setFrame(this.scrubberTime * this.getMaxTime());
                 }
                 this.animation.initKeyFrames();
                 this.animation.initTimeline();
@@ -622,10 +627,11 @@ export class GUI {
                     const orientations = this.animation.getScene().meshes[0].bones.map((bone) => bone.rotation);
                     const positions = this.animation.getScene().meshes[0].bones.map((bone) => bone.position);
                     const texture = this.animation.renderTexture();
-                    const frame = { orientations, positions, texture };
+                    const camera = { position: this.camera.pos(), target: this.camera.target(), up: this.camera.up() };
+                    const frame = { orientations, positions, texture, camera };
                     this.keyFrames[this.selectedKeyFrame] = frame;
                     this.animation.initKeyFrames();
-                    this.setSkeleton(this.scrubberTime * this.getMaxTime());
+                    this.setFrame(this.scrubberTime * this.getMaxTime());
                 }
                 break;
             }
@@ -645,7 +651,7 @@ export class GUI {
                         const scale = 1 / this.animation.times[this.animation.times.length - 1];
                         this.animation.times = this.animation.times.map((t) => t * scale);
                     }
-                    this.setSkeleton(this.scrubberTime * this.getMaxTime());
+                    this.setFrame(this.scrubberTime * this.getMaxTime());
                     this.animation.initKeyFrames();
                     this.animation.initTimeline();
                 }
@@ -656,11 +662,11 @@ export class GUI {
                 // to that stored in the selected keyframe
                 if (this.selectedKeyFrame != -1) {
                     // set skeleton to selected keyframe
-                    this.setSkeleton(this.selectedKeyFrame);
+                    this.setFrame(this.selectedKeyFrame);
                 }
                 break;
             }
-            case "KeyM": {
+            case "KeyT": {
                 this.translate = true;
                 break;
             }
@@ -672,7 +678,7 @@ export class GUI {
     }
     onKeyup(key) {
         switch (key.code) {
-            case "KeyM": {
+            case "KeyT": {
                 this.translate = false;
             }
         }
