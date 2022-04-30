@@ -5,6 +5,7 @@ import { Mat4, Vec3, Vec4, Vec2, Mat2, Quat, Mat3 } from "../lib/TSM.js";
 import { Bone } from "./Scene.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 import { ConeBufferGeometry, Texture } from "../lib/threejs/src/Three.js";
+import { skeletonFSText } from "./Shaders.js";
 
 /**
  * Might be useful for designing any animation GUI
@@ -65,7 +66,7 @@ export class GUI implements IGUI {
 	private static boneRadius = 0.07;
 
 	private camera: Camera;
-	private dragging: boolean;
+	public dragging: boolean;
 	private fps: boolean;
 	private prevX: number;
 	private prevY: number;
@@ -86,6 +87,11 @@ export class GUI implements IGUI {
 	public scrubberTime: number;
 	public selectedScrubber: boolean;
 	public selectedKeyFrame: number;
+	public selectedOrigin: Vec2;
+	private selectedMouseOffset: Vec2;
+	public scrollUp: boolean;
+	public scrollDown: boolean;
+
 	public hoveredTick: number;
 
 	public mode: Mode;
@@ -148,9 +154,13 @@ export class GUI implements IGUI {
 		this.animation.cylinder.setDraw(false);
 		this.keyFrames = [];
 		this.selectedKeyFrame = -1;
+		this.selectedOrigin = Vec2.zero;
+		this.selectedMouseOffset = Vec2.zero;
 		this.hoveredTick = -1;
 		this.selectedScrubber = false;
 		this.translate = false;
+		this.scrollUp = false;
+		this.scrollDown = false;
 
 		this.camera = new Camera(new Vec3([0, 0, -6]), Vec3.zero, new Vec3([0, 1, 0]), 45, this.viewPortWidth / this.viewPortHeight, 0.1, 1000.0);
 	}
@@ -191,6 +201,16 @@ export class GUI implements IGUI {
 
 		if (mouse.offsetX > 800) {
 			this.selectedKeyFrame = this.clickKeyFrame(mouse.offsetX, mouse.offsetY);
+			if (this.selectedKeyFrame != -1) {
+				const x = ((mouse.offsetX - 800) / SkinningAnimation.panelWidth) * 2 - 1;
+				const y = -(mouse.offsetY / SkinningAnimation.panelHeight) * 2 + 1;
+				const mouseCoords = new Vec2([x, y]);
+				this.selectedOrigin = new Vec2([
+					-SkinningAnimation.w,
+					this.animation.keyFrameStart - (this.selectedKeyFrame + 1) * (SkinningAnimation.p + SkinningAnimation.h),
+				]);
+				this.selectedMouseOffset = Vec2.difference(this.selectedOrigin, mouseCoords);
+			}
 		} else if (mouse.offsetY > 600) {
 			this.selectedScrubber = this.clickScrubber(mouse.offsetX, mouse.offsetY);
 			if (this.selectedScrubber) return;
@@ -271,7 +291,7 @@ export class GUI implements IGUI {
 	 * @param mouse
 	 */
 	public drag(mouse: MouseEvent): void {
-		if (this.mode !== Mode.edit || mouse.offsetX > 800) return;
+		if (this.mode !== Mode.edit || mouse.offsetX > 800 + SkinningAnimation.panelWidth) return;
 
 		const mouseRay = this.getMouseRay(mouse.offsetX, mouse.offsetY);
 
@@ -306,33 +326,50 @@ export class GUI implements IGUI {
 							if (!this.animation.lockedTimes[this.selectedKeyFrame]) this.animation.setTime(this.selectedKeyFrame, time);
 						}
 						this.setFrame(this.scrubberTime * this.getMaxTime());
-						return;
-					}
-					const { bone, t } = this.intersectedBone;
-					if (this.clicked) {
-						// rotate bone
-						const lookDir = this.camera.forward().copy().normalize();
-						const vBone = Vec3.difference(bone.endpoint, bone.position);
-						const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
-						if (this.translate && this.clickT != -1) {
-							const oldPoint = Vec3.sum(bone.position, vBone.scale(this.clickT, new Vec3()));
-							const offset = Vec3.difference(end, oldPoint);
-							this.translateBone(bone, Vec3.sum(bone.position, offset));
+					} else if (this.selectedKeyFrame != -1 && mouse.offsetX > 800) {
+						const x = ((mouse.offsetX - 800) / SkinningAnimation.panelWidth) * 2 - 1;
+						const y = -(mouse.offsetY / SkinningAnimation.panelHeight) * 2 + 1;
+						const mouseCoords = new Vec2([x, y]);
+						this.selectedOrigin = Vec2.sum(mouseCoords, this.selectedMouseOffset);
+						if (y < -0.9) {
+							this.scrollUp = true;
+							this.scrollDown = false;
+						} else if (y > 0.9) {
+							this.scrollDown = true;
+							this.scrollUp = false;
 						} else {
-							const b = Vec3.difference(end, bone.position).normalize();
-							b.subtract(lookDir.scale(Vec3.dot(lookDir, b), new Vec3()));
-							b.normalize().scale(Vec3.cross(lookDir, vBone).length());
-							b.add(lookDir.scale(Vec3.dot(lookDir, vBone)));
-							const rotQuat = this.getRotQuat(bone, false, b);
-							this.rotateBone(bone, rotQuat);
+							this.scrollDown = false;
+							this.scrollUp = false;
 						}
-					} else {
-						const rotAxis: Vec3 = Vec3.cross(this.camera.forward(), mouseDir).normalize();
 
-						if (this.fps) {
-							this.camera.rotate(rotAxis, GUI.rotationSpeed);
+						this.animation.initKeyFrames();
+					} else {
+						const { bone, t } = this.intersectedBone;
+						if (this.clicked) {
+							// rotate bone
+							const lookDir = this.camera.forward().copy().normalize();
+							const vBone = Vec3.difference(bone.endpoint, bone.position);
+							const end = Vec3.sum(mouseRay.pos, mouseRay.dir.scale(t, new Vec3()));
+							if (this.translate && this.clickT != -1) {
+								const oldPoint = Vec3.sum(bone.position, vBone.scale(this.clickT, new Vec3()));
+								const offset = Vec3.difference(end, oldPoint);
+								this.translateBone(bone, Vec3.sum(bone.position, offset));
+							} else {
+								const b = Vec3.difference(end, bone.position).normalize();
+								b.subtract(lookDir.scale(Vec3.dot(lookDir, b), new Vec3()));
+								b.normalize().scale(Vec3.cross(lookDir, vBone).length());
+								b.add(lookDir.scale(Vec3.dot(lookDir, vBone)));
+								const rotQuat = this.getRotQuat(bone, false, b);
+								this.rotateBone(bone, rotQuat);
+							}
 						} else {
-							this.camera.orbitTarget(rotAxis, GUI.rotationSpeed);
+							const rotAxis: Vec3 = Vec3.cross(this.camera.forward(), mouseDir).normalize();
+
+							if (this.fps) {
+								this.camera.rotate(rotAxis, GUI.rotationSpeed);
+							} else {
+								this.camera.orbitTarget(rotAxis, GUI.rotationSpeed);
+							}
 						}
 					}
 					break;
@@ -490,16 +527,36 @@ export class GUI implements IGUI {
 		// TODO
 		// Maybe your bone highlight/dragging logic needs to do stuff here too
 		this.clicked = false;
+		this.scrollDown = false;
+		this.scrollUp = false;
+
+		if (this.selectedKeyFrame != -1) {
+			const mouseCoords = Vec2.difference(this.selectedOrigin, this.selectedMouseOffset);
+			const y = ((1 - mouseCoords.y) / 2) * SkinningAnimation.panelHeight;
+			const offsetY = y + (this.animation.keyFrameStart - 1) * SkinningAnimation.panelHeight * 0.5;
+			let index = Math.floor(offsetY / (SkinningAnimation.frameHeight + SkinningAnimation.framePadding) - SkinningAnimation.p);
+			if (index < 0) index = 0;
+			else if (index >= this.getNumKeyFrames()) index = this.getNumKeyFrames() - 1;
+			const keyFrame = this.keyFrames[this.selectedKeyFrame];
+			this.keyFrames.splice(this.selectedKeyFrame, 1);
+			this.keyFrames.splice(index, 0, keyFrame);
+			this.selectedKeyFrame = index;
+			this.animation.initKeyFrames();
+		}
 	}
 
 	public scroll(scroll: WheelEvent): void {
 		if (scroll.offsetX < 800) return;
 		scroll.preventDefault();
 
+		this.scrollY(scroll.deltaY);
+	}
+
+	public scrollY(y: number) {
 		const h = (2 * SkinningAnimation.frameHeight) / SkinningAnimation.panelHeight;
 		const p = (2 * SkinningAnimation.framePadding) / SkinningAnimation.panelHeight;
 
-		this.animation.keyFrameStart += scroll.deltaY * 0.001;
+		this.animation.keyFrameStart += y * 0.001;
 		const top = this.animation.keyFrameStart;
 		const bottom = this.animation.keyFrameStart - this.getNumKeyFrames() * (h + p);
 		const maxTop = top - bottom - 1 + p;
@@ -554,7 +611,7 @@ export class GUI implements IGUI {
 			bone.position = Vec3.sum(parent.endpoint, Vec3.lerp(offset1, offset2, interpT));
 		}
 
-		bone.rotation = Quat.slerp(f1.orientations[index], f2.orientations[index], interpT).normalize();
+		bone.rotation = Quat.slerpShort(f1.orientations[index], f2.orientations[index], interpT).normalize();
 		bone.endpoint = Vec3.sum(bone.position, initialB.multiplyByQuat(bone.rotation));
 
 		bone.children.forEach((c) => {
