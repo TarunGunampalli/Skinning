@@ -542,6 +542,9 @@ export class GUI implements IGUI {
 			this.keyFrames.splice(index, 0, keyFrame);
 			this.selectedKeyFrame = index;
 			this.animation.initKeyFrames();
+			if (this.getNumKeyFrames() > 1) {
+				this.setFrame(this.scrubberTime * this.getMaxTime());
+			}
 		}
 	}
 
