@@ -3,7 +3,7 @@ import { CanvasAnimation } from "../lib/webglutils/CanvasAnimation.js";
 import { Floor } from "../lib/webglutils/Floor.js";
 import { GUI, Mode } from "./Gui.js";
 import { sceneFSText, sceneFSTextureText, sceneVSText, floorFSText, floorVSText, skeletonFSText, skeletonVSText, sBackVSText, sBackFSText, cylinderVSText, cylinderFSText, keyFramesFSText, keyFramesVSText, timelineFSText, timelineVSText, scrubberFSText, scrubberVSText, } from "./Shaders.js";
-import { Mat4, Vec4 } from "../lib/TSM.js";
+import { Mat4, Vec4, Vec2 } from "../lib/TSM.js";
 import { CLoader } from "./AnimationFileLoader.js";
 import { RenderPass } from "../lib/webglutils/RenderPass.js";
 import { Cylinder } from "./Cylinder.js";
@@ -53,6 +53,7 @@ export class SkinningAnimation extends CanvasAnimation {
         this.times = [];
         this.lockedTimes = [];
         this.gui.reset();
+        this.keyFrameStart = 1;
         this.setScene(this.loadedScene);
     }
     initGui() {
@@ -207,39 +208,35 @@ export class SkinningAnimation extends CanvasAnimation {
      * Sets up the key frames drawing
      */
     initKeyFrames() {
-        const numFrames = this.getGUI().getNumKeyFrames();
-        const keyFrames = this.getGUI().keyFrames;
+        const gui = this.getGUI();
+        const numFrames = gui.getNumKeyFrames();
+        this.keyFrameRenderPasses = [];
+        for (let i = 0; i < numFrames; i++) {
+            this.initKeyFrame(i);
+        }
+    }
+    initKeyFrame(index) {
+        const gui = this.getGUI();
         const w = SkinningAnimation.frameWidth / SkinningAnimation.panelWidth;
         const h = (2 * SkinningAnimation.frameHeight) / SkinningAnimation.panelHeight;
         const p = (2 * SkinningAnimation.framePadding) / SkinningAnimation.panelHeight;
-        this.keyFrameRenderPasses = [];
-        for (let i = 0; i < numFrames; i++) {
-            const keyFrameRenderPass = new RenderPass(this.extVAO, this.ctx, keyFramesVSText, keyFramesFSText);
-            const positionsFlat = [
-                -w,
-                this.keyFrameStart - (i + 1) * p - i * h,
-                -w,
-                this.keyFrameStart - (i + 1) * (p + h),
-                w,
-                this.keyFrameStart - (i + 1) * p - i * h,
-                w,
-                this.keyFrameStart - (i + 1) * (p + h),
-            ];
-            const origin = [-w, this.keyFrameStart - (i + 1) * p - (i + 1) * h];
-            const indicesFlat = [0, 1, 2, 2, 1, 3];
-            keyFrameRenderPass.addTexture(keyFrames[i].texture);
-            keyFrameRenderPass.addUniform("w", (gl, loc) => {
-                gl.uniform1f(loc, i == this.getGUI().selectedKeyFrame ? 0.6 : 1);
-            });
-            keyFrameRenderPass.setIndexBufferData(new Uint32Array(indicesFlat));
-            keyFrameRenderPass.addUniform("origin", (gl, loc) => {
-                gl.uniform2fv(loc, new Float32Array(origin));
-            });
-            keyFrameRenderPass.addAttribute("vertPosition", 2, this.ctx.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array(positionsFlat));
-            keyFrameRenderPass.setDrawData(this.ctx.TRIANGLES, indicesFlat.length, this.ctx.UNSIGNED_INT, 0);
-            keyFrameRenderPass.setup();
-            this.keyFrameRenderPasses[i] = keyFrameRenderPass;
-        }
+        const keyFrames = gui.keyFrames;
+        const keyFrameRenderPass = new RenderPass(this.extVAO, this.ctx, keyFramesVSText, keyFramesFSText);
+        const origin = index == gui.selectedKeyFrame && gui.dragging ? gui.selectedOrigin : new Vec2([-w, this.keyFrameStart - (index + 1) * (p + h)]);
+        const positionsFlat = [origin.x, origin.y + h, origin.x, origin.y, origin.x + 2 * w, origin.y + h, origin.x + 2 * w, origin.y];
+        const indicesFlat = [0, 1, 2, 2, 1, 3];
+        keyFrameRenderPass.addTexture(keyFrames[index].texture);
+        keyFrameRenderPass.addUniform("w", (gl, loc) => {
+            gl.uniform1f(loc, index == gui.selectedKeyFrame ? 0.6 : 1);
+        });
+        keyFrameRenderPass.setIndexBufferData(new Uint32Array(indicesFlat));
+        keyFrameRenderPass.addUniform("origin", (gl, loc) => {
+            gl.uniform2fv(loc, new Float32Array(origin.xy));
+        });
+        keyFrameRenderPass.addAttribute("vertPosition", 2, this.ctx.FLOAT, false, 2 * Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array(positionsFlat));
+        keyFrameRenderPass.setDrawData(this.ctx.TRIANGLES, indicesFlat.length, this.ctx.UNSIGNED_INT, 0);
+        keyFrameRenderPass.setup();
+        this.keyFrameRenderPasses[index] = keyFrameRenderPass;
     }
     renderTexture() {
         const gl = this.ctx;
@@ -343,7 +340,6 @@ export class SkinningAnimation extends CanvasAnimation {
     }
     initScrubber() {
         const time = this.timeline.transform(this.getGUI().getScrubberTime());
-        console.log(time);
         this.scrubberRenderPass.addUniform("trans", (gl, loc) => {
             gl.uniformMatrix3fv(loc, false, new Float32Array([1, 0, 0, 0, 1, 0, time, 0, 1]));
         });
@@ -393,6 +389,12 @@ export class SkinningAnimation extends CanvasAnimation {
             this.sBackRenderPass.draw();
         }
         if (this.getGUI().getNumKeyFrames() > 0) {
+            if (this.getGUI().scrollUp) {
+                this.getGUI().scrollY(50);
+            }
+            else if (this.getGUI().scrollDown) {
+                this.getGUI().scrollY(-50);
+            }
             gl.viewport(800, 0, SkinningAnimation.panelWidth, SkinningAnimation.panelHeight);
             this.keyFrameRenderPasses.forEach((rp) => {
                 rp.draw();
@@ -437,6 +439,9 @@ SkinningAnimation.panelHeight = 800;
 SkinningAnimation.frameWidth = 260;
 SkinningAnimation.frameHeight = 195;
 SkinningAnimation.framePadding = 25;
+SkinningAnimation.w = SkinningAnimation.frameWidth / SkinningAnimation.panelWidth;
+SkinningAnimation.h = (2 * SkinningAnimation.frameHeight) / SkinningAnimation.panelHeight;
+SkinningAnimation.p = (2 * SkinningAnimation.framePadding) / SkinningAnimation.panelHeight;
 export function initializeCanvas() {
     const canvas = document.getElementById("glCanvas");
     /* Start drawing */
