@@ -666,9 +666,12 @@ export class SkinningAnimation extends CanvasAnimation {
 			});
 		}
 
-		if (GUI.mode === Mode.playback) {
-			const track: CanvasCaptureMediaStreamTrack = GUI.mediaStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
-			track.requestFrame();
+		if (GUI.mediaRecorder.state === "recording") {
+			// const track = GUI.mediaStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+			// track.requestFrame();
+			if (GUI.mode === Mode.edit) {
+				GUI.mediaRecorder.stop();
+			}
 		}
 	}
 

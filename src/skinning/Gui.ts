@@ -117,8 +117,10 @@ export class GUI implements IGUI {
 		this.prevY = 0;
 
 		this.animation = animation;
-		this.mediaStream = canvasScene.captureStream(0);
-		this.mediaRecorder = new MediaRecorder(this.mediaStream);
+		this.mediaStream = canvasScene.captureStream(60);
+		this.mediaRecorder = new MediaRecorder(this.mediaStream, {
+			videoBitsPerSecond: 40000000,
+		});
 		this.mediaRecorder.ondataavailable = (e) => {
 			this.data = e.data;
 		};
@@ -310,7 +312,6 @@ export class GUI implements IGUI {
 				this.time = 0;
 				this.scrubberTime = 1;
 				this.mode = Mode.edit;
-				this.mediaRecorder.stop();
 			}
 		}
 	}
@@ -792,11 +793,11 @@ export class GUI implements IGUI {
 				this.animation.initTimeline();
 				break;
 			}
-			case "KeyH": {
-				if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {
+			case "KeyH":
+				if (this.mode === Mode.edit && this.getNumKeyFrames() > 1 && this.mediaRecorder.state !== "recording") {
 					this.mediaRecorder.start();
 				}
-			}
+
 			case "KeyP": {
 				if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {
 					this.mode = Mode.playback;

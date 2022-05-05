@@ -400,9 +400,12 @@ export class SkinningAnimation extends CanvasAnimation {
                 rp.draw();
             });
         }
-        if (GUI.mode === Mode.playback) {
-            const track = GUI.mediaStream.getVideoTracks()[0];
-            track.requestFrame();
+        if (GUI.mediaRecorder.state === "recording") {
+            // const track = GUI.mediaStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+            // track.requestFrame();
+            if (GUI.mode === Mode.edit) {
+                GUI.mediaRecorder.stop();
+            }
         }
     }
     drawScene(x, y, width, height) {
