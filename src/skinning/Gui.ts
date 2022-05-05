@@ -16,7 +16,7 @@ interface IGUI {
 	dragStart(me: MouseEvent): void;
 	drag(me: MouseEvent): void;
 	dragEnd(me: MouseEvent): void;
-	onKeydown(ke: KeyboardEvent): void;
+	onKeydown(ke: KeyboardEvent, cavnas: HTMLCanvasElement): void;
 }
 
 interface Ray {
@@ -65,6 +65,10 @@ export class GUI implements IGUI {
 	private static readonly panSpeed: number = 0.1;
 	private static boneRadius = 0.07;
 
+	public mediaStream: MediaStream;
+	public mediaRecorder: MediaRecorder;
+	public data: Blob;
+
 	private camera: Camera;
 	public dragging: boolean;
 	private fps: boolean;
@@ -105,7 +109,7 @@ export class GUI implements IGUI {
 	 * @param animation required as a back pointer for some of the controls
 	 * @param sponge required for some of the controls
 	 */
-	constructor(canvas: HTMLCanvasElement, animation: SkinningAnimation) {
+	constructor(canvas: HTMLCanvasElement, animation: SkinningAnimation, canvasScene: HTMLCanvasElement) {
 		this.height = canvas.height;
 		this.viewPortHeight = this.height - 200;
 		this.viewPortWidth = 800;
@@ -113,10 +117,36 @@ export class GUI implements IGUI {
 		this.prevY = 0;
 
 		this.animation = animation;
+		this.mediaStream = canvasScene.captureStream(0);
+		this.mediaRecorder = new MediaRecorder(this.mediaStream);
+		this.mediaRecorder.ondataavailable = (e) => {
+			this.data = e.data;
+		};
+		this.mediaRecorder.onstop = (e) => {
+			var blob = new Blob([this.data], { type: "video/webm" });
+
+			this.download(blob, "recording.webm");
+		};
 
 		this.reset();
 
 		this.registerEventListeners(canvas);
+	}
+
+	// Function to download data to a file
+	// source: https://stackoverflow.com/questions/13405129/javascript-create-and-save-file
+	private download(file: Blob, filename: string) {
+		// var file = new Blob([data]);
+		var a = document.createElement("a"),
+			url = URL.createObjectURL(file);
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		setTimeout(function () {
+			document.body.removeChild(a);
+			window.URL.revokeObjectURL(url);
+		}, 0);
 	}
 
 	public getNumKeyFrames(): number {
@@ -280,6 +310,7 @@ export class GUI implements IGUI {
 				this.time = 0;
 				this.scrubberTime = 1;
 				this.mode = Mode.edit;
+				this.mediaRecorder.stop();
 			}
 		}
 	}
@@ -760,6 +791,11 @@ export class GUI implements IGUI {
 				this.animation.initKeyFrames();
 				this.animation.initTimeline();
 				break;
+			}
+			case "KeyH": {
+				if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {
+					this.mediaRecorder.start();
+				}
 			}
 			case "KeyP": {
 				if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {

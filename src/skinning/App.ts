@@ -110,7 +110,7 @@ export class SkinningAnimation extends CanvasAnimation {
 		this.skeletonRenderPass = new RenderPass(this.extVAO, gl, skeletonVSText, skeletonFSText);
 		this.cylinderRenderPass = new RenderPass(this.extVAO, gl, cylinderVSText, cylinderFSText);
 
-		this.gui = new GUI(this.canvas2d, this);
+		this.gui = new GUI(this.canvas2d, this, canvas);
 		this.lightPosition = new Vec4([-10, 10, -10, 1]);
 		this.backgroundColor = new Vec4([0.0, 0.37254903, 0.37254903, 1.0]);
 
@@ -664,6 +664,11 @@ export class SkinningAnimation extends CanvasAnimation {
 			this.keyFrameRenderPasses.forEach((rp) => {
 				rp.draw();
 			});
+		}
+
+		if (GUI.mode === Mode.playback) {
+			const track: CanvasCaptureMediaStreamTrack = GUI.mediaStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+			track.requestFrame();
 		}
 	}
 

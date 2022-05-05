@@ -17,7 +17,7 @@ export class GUI {
      * @param animation required as a back pointer for some of the controls
      * @param sponge required for some of the controls
      */
-    constructor(canvas, animation) {
+    constructor(canvas, animation, canvasScene) {
         this.hoverX = 0;
         this.hoverY = 0;
         this.height = canvas.height;
@@ -26,8 +26,31 @@ export class GUI {
         this.prevX = 0;
         this.prevY = 0;
         this.animation = animation;
+        this.mediaStream = canvasScene.captureStream(0);
+        this.mediaRecorder = new MediaRecorder(this.mediaStream);
+        this.mediaRecorder.ondataavailable = (e) => {
+            this.data = e.data;
+        };
+        this.mediaRecorder.onstop = (e) => {
+            var blob = new Blob([this.data], { type: "video/webm" });
+            this.download(blob, "recording.webm");
+        };
         this.reset();
         this.registerEventListeners(canvas);
+    }
+    // Function to download data to a file
+    // source: https://stackoverflow.com/questions/13405129/javascript-create-and-save-file
+    download(file, filename) {
+        // var file = new Blob([data]);
+        var a = document.createElement("a"), url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
     }
     getNumKeyFrames() {
         // TODO
@@ -180,6 +203,7 @@ export class GUI {
                 this.time = 0;
                 this.scrubberTime = 1;
                 this.mode = Mode.edit;
+                this.mediaRecorder.stop();
             }
         }
     }
@@ -656,6 +680,11 @@ export class GUI {
                 this.animation.initKeyFrames();
                 this.animation.initTimeline();
                 break;
+            }
+            case "KeyH": {
+                if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {
+                    this.mediaRecorder.start();
+                }
             }
             case "KeyP": {
                 if (this.mode === Mode.edit && this.getNumKeyFrames() > 1) {
