@@ -117,7 +117,7 @@ export class GUI implements IGUI {
 		this.prevY = 0;
 
 		this.animation = animation;
-		this.mediaStream = canvasScene.captureStream(60);
+		this.mediaStream = canvasScene.captureStream(120);
 		this.mediaRecorder = new MediaRecorder(this.mediaStream, {
 			videoBitsPerSecond: 40000000,
 		});
