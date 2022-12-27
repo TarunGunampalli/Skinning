@@ -112,7 +112,7 @@ export class RenderPass {
 					gl.useProgram(null);
 					this.extVAO.bindVertexArrayOES(null);
 				};
-				img.src = `static/assets/skinning/${this.textureMap}" | relative_url }}`;
+				img.src = `static/assets/skinning/${this.textureMap}`;
 			}
 		}
 
