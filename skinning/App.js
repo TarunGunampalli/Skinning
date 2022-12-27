@@ -454,6 +454,6 @@ export function initializeCanvas() {
     /* Start drawing */
     const canvasAnimation = new SkinningAnimation(canvas);
     canvasAnimation.start();
-    canvasAnimation.setScene(`{{ "/static/assets/skinning/split_cube.dae" | relative_url }}`);
+    canvasAnimation.setScene(`static/assets/skinning/split_cube.dae" | relative_url }}`);
 }
 //# sourceMappingURL=App.js.map
