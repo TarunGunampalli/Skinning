@@ -545,7 +545,7 @@ export class SkinningAnimation extends CanvasAnimation {
 			undefined,
 			this.timeline.positionsFlat()
 		);
-		const colorIndices = [];
+		const colorIndices: number[] = [];
 		for (let i = 0; i <= this.times.length + 1; i++) colorIndices.push(i, i);
 		this.timelineRenderPass.addAttribute("index", 1, this.ctx.FLOAT, false, Float32Array.BYTES_PER_ELEMENT, 0, undefined, new Float32Array(colorIndices));
 		const selected = this.getGUI().selectedKeyFrame == -1 ? -1 : (this.timeline.transform(this.times[this.getGUI().selectedKeyFrame]) / 2 + 0.4) * 1.25;
