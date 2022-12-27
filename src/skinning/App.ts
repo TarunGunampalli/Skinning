@@ -713,5 +713,5 @@ export function initializeCanvas(): void {
 	/* Start drawing */
 	const canvasAnimation: SkinningAnimation = new SkinningAnimation(canvas);
 	canvasAnimation.start();
-	canvasAnimation.setScene(`{{ "/static/assets/skinning/split_cube.dae" | relative_url }}`);
+	canvasAnimation.setScene(`static/assets/skinning/split_cube.dae" | relative_url }}`);
 }
