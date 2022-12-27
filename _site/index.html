@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" type="text/css" href="static/main.css" />
+    <title>WebGL - Skinning</title>
+</head>
+
+<body>
+    <div class="container">
+        <div>
+            <canvas id="glCanvas" class="card" width="1120" height="800">
+                Your browser does not support HTML5 </canvas>
+            <canvas id="textCanvas" width="1120" height="800">
+                Your browser does not support HTML5 </canvas>
+        </div>
+        <div class="keybinds">
+            <div>
+                <h2 class="title">Keybinds</h2>
+            </div>
+            <ul>
+                <li>
+                    1-7: Render Scenes 1-7
+                </li>
+                <li>
+                    W: Move Camera Forward
+                </li>
+                <li>
+                    A: Move Camera Left
+                </li>
+                <li>
+                    S: Move Camera Backwards
+                </li>
+                <li>
+                    D: Move Camera Right
+                </li>
+                <li>
+                    R: Reset Scene
+                </li>
+                <li>
+                    Left Arrow: Roll Camera Left
+                </li>
+                <li>
+                    Right Arrow: Roll Camera Right
+                </li>
+                <li>
+                    Up Arrow: Move Camera Up
+                </li>
+                <li>
+                    Down Arrow: Move Camera Down
+                </li>
+                <li>
+                    C: Toggle FPS Mode
+                </li>
+                <li>
+                    K: Capture a Keyframe
+                </li>
+                <li>
+                    P: Start/Pause Animation Playback
+                </li>
+                <li>
+                    H: Record Animation and Download as WEBM
+                </li>
+                <li>
+                    L: Lock/Unlock Selected Keyframe Timestamp
+                </li>
+                <li>
+                    U: Update Selected Keyframe to Current Position
+                </li>
+                <li>
+                    Delete: Delete Selected Keyframe
+                </li>
+                <li>
+                    =: Preview Selected Keyframe in Viewer
+                </li>
+                <li>
+                    T: Hold while Dragging Bone to Translate
+                </li>
+            </ul>
+        </div>
+
+    </div>
+    <br />
+    <script type="module" src="./index.js"></script>
+
+    <br />
+</body>
+
+</html>
