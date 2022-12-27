@@ -454,6 +454,6 @@ export function initializeCanvas() {
     /* Start drawing */
     const canvasAnimation = new SkinningAnimation(canvas);
     canvasAnimation.start();
-    canvasAnimation.setScene("/static/assets/skinning/split_cube.dae");
+    canvasAnimation.setScene("{{baseurl}}/static/assets/skinning/split_cube.dae");
 }
 //# sourceMappingURL=App.js.map
