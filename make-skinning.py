@@ -10,5 +10,5 @@ cmd = 'tsc --allowJs -m ES6 -t ES6 --outDir dist --sourceMap --alwaysStrict ' + 
 print('Building TypeScript: ' + cmd)
 os.system(cmd)
 copy_tree('./src/skinning/static', './dist')
-# cmd = 'jekyll serve --baseurl='''
-# os.system(cmd)
+os.system('git commit -am "build"')
+os.system('git subtree push --prefix dist origin gh-pages')
