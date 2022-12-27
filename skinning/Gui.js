@@ -550,31 +550,31 @@ export class GUI {
     onKeydown(key) {
         switch (key.code) {
             case "Digit1": {
-                this.animation.setScene("{{site.baseurl}}/static/assets/skinning/split_cube.dae");
+                this.animation.setScene(`{{ "/static/assets/skinning/split_cube.dae" | relative_url }}`);
                 break;
             }
             case "Digit2": {
-                this.animation.setScene("{{site.baseurl}}/static/assets/skinning/long_cubes.dae");
+                this.animation.setScene(`{{ "/static/assets/skinning/long_cubes.dae" | relative_url }}`);
                 break;
             }
             case "Digit3": {
-                this.animation.setScene("{{site.baseurl}}/static/assets/skinning/simple_art.dae");
+                this.animation.setScene(`{{ "/static/assets/skinning/simple_art.dae" | relative_url }}`);
                 break;
             }
             case "Digit4": {
-                this.animation.setScene("{{site.baseurl}}/static/assets/skinning/mapped_cube.dae");
+                this.animation.setScene(`{{ "/static/assets/skinning/mapped_cube.dae" | relative_url }}`);
                 break;
             }
             case "Digit5": {
-                this.animation.setScene("{{site.baseurl}}/static/assets/skinning/robot.dae");
+                this.animation.setScene(`{{ "/static/assets/skinning/robot.dae" | relative_url }}`);
                 break;
             }
             case "Digit6": {
-                this.animation.setScene("{{site.baseurl}}/static/assets/skinning/head.dae");
+                this.animation.setScene(`{{ "/static/assets/skinning/head.dae" | relative_url }}`);
                 break;
             }
             case "Digit7": {
-                this.animation.setScene("{{site.baseurl}}/static/assets/skinning/wolf.dae");
+                this.animation.setScene(`{{ "/static/assets/skinning/wolf.dae" | relative_url }}`);
                 break;
             }
             case "KeyW": {
